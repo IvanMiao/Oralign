@@ -1,0 +1,212 @@
+import type {
+  CoachResult,
+  DecodedAudio,
+  EvidenceLevel,
+  EvidenceSource,
+  FrictionCategory,
+  Intent,
+  IntentMode,
+  IntentSlot,
+  RecallLevel,
+} from "@/lib/types";
+
+const categories = new Set<FrictionCategory>(["intelligibility", "processing", "fluency", "pragmatics"]);
+const intentSlots = new Set<IntentSlot>(["progress", "blocker", "request", "overall"]);
+const intentModes = new Set<IntentMode>(["quick", "research"]);
+const evidenceSources = new Set<EvidenceSource>(["audio", "text", "timing", "context", "asr_disagreement"]);
+const evidenceLevels = new Set<EvidenceLevel>(["high", "medium"]);
+const qualityReasons = new Set<CoachResult["quality"]["reason"]>([
+  "ok",
+  "too_short",
+  "low_audio_quality",
+  "multiple_speakers",
+  "not_english",
+  "insufficient_evidence",
+]);
+const recallLevels = new Set<RecallLevel>(["clear", "partial", "missing"]);
+const judgeDecisions = new Set<NormalizedJudgeOutput["decision"]>([
+  "a_clearer",
+  "b_clearer",
+  "no_clear_difference",
+  "cannot_judge",
+]);
+
+export interface NormalizedJudgeOutput {
+  decision: "a_clearer" | "b_clearer" | "no_clear_difference" | "cannot_judge";
+  reason: string;
+  recall_a: Record<"progress" | "blocker" | "request", RecallLevel>;
+  recall_b: Record<"progress" | "blocker" | "request", RecallLevel>;
+  effort_a: number;
+  effort_b: number;
+}
+
+export class ValidationError extends Error {
+  readonly code: string;
+  status: number;
+
+  constructor(message: string, code = "INVALID_INPUT") {
+    super(message);
+    this.name = "ValidationError";
+    this.code = code;
+    this.status = 400;
+  }
+}
+
+function asObject(value: unknown, message: string): Record<string, unknown> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new ValidationError(message);
+  }
+  return value as Record<string, unknown>;
+}
+
+function requiredString(value: unknown, field: string, maxLength = 2_000): string {
+  if (typeof value !== "string" || !value.trim()) {
+    throw new ValidationError(`${field} 不能为空`);
+  }
+  const trimmed = value.trim();
+  if (trimmed.length > maxLength) throw new ValidationError(`${field} 过长`);
+  return trimmed;
+}
+
+function optionalString(value: unknown, maxLength = 2_000): string {
+  if (typeof value !== "string") return "";
+  return value.trim().slice(0, maxLength);
+}
+
+function boundedNumber(value: unknown, field: string, min: number, max: number): number {
+  const number = Number(value);
+  if (!Number.isFinite(number) || number < min || number > max) {
+    throw new ValidationError(`${field} 超出范围`);
+  }
+  return number;
+}
+
+function enumValue<T extends string>(value: unknown, allowed: ReadonlySet<T>, field: string): T {
+  if (typeof value !== "string" || !allowed.has(value as T)) {
+    throw new ValidationError(`${field} 无效`);
+  }
+  return value as T;
+}
+
+export function validateIntent(value: unknown): Intent {
+  const intent = asObject(value, "缺少核心意图");
+
+  // Payloads created before intent modes existed are treated as research data.
+  const hasLegacySlots = [intent.progress, intent.blocker, intent.request]
+    .some((slot) => typeof slot === "string" && slot.trim());
+  const mode = intent.mode === undefined
+    ? (hasLegacySlots ? "research" : "quick")
+    : enumValue(intent.mode, intentModes, "测试模式");
+
+  if (mode === "quick") {
+    return {
+      mode,
+      takeaway: optionalString(intent.takeaway, 600),
+      progress: "",
+      blocker: "",
+      request: "",
+    };
+  }
+
+  return {
+    mode,
+    takeaway: "",
+    progress: requiredString(intent.progress, "进展", 600),
+    blocker: requiredString(intent.blocker, "阻塞", 600),
+    request: requiredString(intent.request, "请求", 600),
+  };
+}
+
+export function decodeAudioInput(value: unknown, maxBytes = 12 * 1024 * 1024): DecodedAudio {
+  const audio = asObject(value, "缺少音频");
+  const mimeType = requiredString(audio.mimeType, "音频格式", 100).toLowerCase();
+  if (!mimeType.startsWith("audio/")) throw new ValidationError("只接受音频文件");
+
+  const base64 = requiredString(audio.base64, "音频数据", Math.ceil(maxBytes * 1.5));
+  if (!/^[A-Za-z0-9+/]+={0,2}$/.test(base64)) throw new ValidationError("音频编码无效");
+
+  const buffer = Buffer.from(base64, "base64");
+  if (buffer.length < 32) throw new ValidationError("音频为空或过短");
+  if (buffer.length > maxBytes) {
+    throw new ValidationError(`音频超过 ${Math.floor(maxBytes / 1024 / 1024)} MB 限制`, "AUDIO_TOO_LARGE");
+  }
+
+  const inferredExtension = mimeType.split("/")[1]?.split(";")[0] || "webm";
+  return {
+    buffer,
+    base64,
+    mimeType,
+    fileName: optionalString(audio.fileName, 180) || `recording.${inferredExtension}`,
+    size: buffer.length,
+  };
+}
+
+export function normalizeCoachOutput(value: unknown): CoachResult {
+  const result = asObject(value, "Coach 返回格式无效");
+  const quality = asObject(result.quality, "Coach 缺少质量判断");
+  const rawFrictions = Array.isArray(result.frictions) ? result.frictions.slice(0, 3) : [];
+
+  const frictions = rawFrictions.map((raw, index) => {
+    const item = asObject(raw, `摩擦候选 ${index + 1} 无效`);
+    const startSec = boundedNumber(item.start_sec, "start_sec", 0, 3_600);
+    const endSec = boundedNumber(item.end_sec, "end_sec", startSec, 3_600);
+    const sources = Array.isArray(item.evidence_sources)
+      ? [...new Set(item.evidence_sources.filter((source): source is EvidenceSource => (
+          typeof source === "string" && evidenceSources.has(source as EvidenceSource)
+        )))]
+      : [];
+    if (sources.length === 0) {
+      throw new ValidationError(`摩擦候选 ${index + 1} 缺少证据来源`);
+    }
+
+    return {
+      id: `friction-${index + 1}`,
+      start_sec: startSec,
+      end_sec: endSec,
+      category: enumValue(item.category, categories, "category"),
+      intent_slot: enumValue(item.intent_slot, intentSlots, "intent_slot"),
+      original_excerpt: requiredString(item.original_excerpt, "original_excerpt", 500),
+      listener_effect: requiredString(item.listener_effect, "listener_effect", 800),
+      evidence_sources: sources,
+      evidence_level: enumValue(item.evidence_level, evidenceLevels, "evidence_level"),
+      suggested_version: requiredString(item.suggested_version, "suggested_version", 800),
+      optional_style_only: Boolean(item.optional_style_only),
+    };
+  });
+
+  return {
+    quality: {
+      usable: Boolean(quality.usable),
+      reason: enumValue(quality.reason, qualityReasons, "quality.reason"),
+      note: optionalString(quality.note, 800),
+    },
+    summary: requiredString(result.summary, "summary", 1_000),
+    frictions,
+  };
+}
+
+export function normalizeJudgeOutput(value: unknown): NormalizedJudgeOutput {
+  const result = asObject(value, "Judge 返回格式无效");
+
+  function normalizeRecall(raw: unknown, label: string): NormalizedJudgeOutput["recall_a"] {
+    const recall = asObject(raw, `${label} 意图复述无效`);
+    return {
+      progress: enumValue(recall.progress, recallLevels, `${label}.progress`),
+      blocker: enumValue(recall.blocker, recallLevels, `${label}.blocker`),
+      request: enumValue(recall.request, recallLevels, `${label}.request`),
+    };
+  }
+
+  return {
+    decision: enumValue(result.decision, judgeDecisions, "decision"),
+    reason: requiredString(result.reason, "reason", 1_000),
+    recall_a: normalizeRecall(result.recall_a, "recall_a"),
+    recall_b: normalizeRecall(result.recall_b, "recall_b"),
+    effort_a: boundedNumber(result.effort_a, "effort_a", 1, 5),
+    effort_b: boundedNumber(result.effort_b, "effort_b", 1, 5),
+  };
+}
+
+export function validateTtsText(value: unknown): string {
+  return requiredString(value, "参考表达", 800);
+}
