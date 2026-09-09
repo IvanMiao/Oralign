@@ -6,6 +6,7 @@ import type { CapturedAudio } from "@/lib/types";
 
 interface UseAudioCaptureOptions {
   idleHint: string;
+  recordingHint: string;
   maxBytes: number;
   maxSeconds: number;
   onChange: (audio: CapturedAudio | null) => void;
@@ -39,6 +40,7 @@ function formatTime(seconds: number): string {
 
 export function useAudioCapture({
   idleHint,
+  recordingHint,
   maxBytes,
   maxSeconds,
   onChange,
@@ -48,7 +50,7 @@ export function useAudioCapture({
   const [isRecording, setIsRecording] = useState(false);
   const [meta, setMeta] = useState(idleHint);
   const [playerUrl, setPlayerUrl] = useState("");
-  const [status, setStatus] = useState("尚未选择音频");
+  const [status, setStatus] = useState("No audio selected");
   const [timer, setTimer] = useState("00:00");
 
   const recorderRef = useRef<MediaRecorder | null>(null);
@@ -59,9 +61,9 @@ export function useAudioCapture({
 
   const replaceAudio = useCallback((blob: Blob, fileName: string) => {
     const mimeType = blob.type || "audio/webm";
-    if (!mimeType.startsWith("audio/")) throw new Error("请选择音频文件");
-    if (blob.size > maxBytes) throw new Error(`音频不能超过 ${Math.floor(maxBytes / 1_024 / 1_024)} MB`);
-    if (blob.size < 32) throw new Error("音频为空或过短");
+    if (!mimeType.startsWith("audio/")) throw new Error("Choose an audio file");
+    if (blob.size > maxBytes) throw new Error(`Audio must be no larger than ${Math.floor(maxBytes / 1_024 / 1_024)} MB`);
+    if (blob.size < 32) throw new Error("The audio is empty or too short");
 
     if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current);
     const nextUrl = URL.createObjectURL(blob);
@@ -70,8 +72,8 @@ export function useAudioCapture({
     setAudio(nextAudio);
     setPlayerUrl(nextUrl);
     setStatus(fileName);
-    setMeta(`${formatBytes(blob.size)} · 仅当前会话`);
-    setTimer("已就绪");
+    setMeta(`${formatBytes(blob.size)} · This session only`);
+    setTimer("Ready");
     onChange(nextAudio);
   }, [maxBytes, onChange]);
 
@@ -91,7 +93,7 @@ export function useAudioCapture({
     setIsRecording(false);
     setMeta(idleHint);
     setPlayerUrl("");
-    setStatus("尚未选择音频");
+    setStatus("No audio selected");
     setTimer("00:00");
     onChange(null);
   }, [idleHint, onChange]);
@@ -100,7 +102,7 @@ export function useAudioCapture({
     try {
       replaceAudio(file, file.name);
     } catch (error) {
-      onError(error instanceof Error ? error.message : "无法读取音频");
+      onError(error instanceof Error ? error.message : "Could not read audio");
     }
   }, [onError, replaceAudio]);
 
@@ -111,7 +113,7 @@ export function useAudioCapture({
       return;
     }
     if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) {
-      onError("当前浏览器不支持录音，请改用上传音频");
+      onError("This browser cannot record audio; upload an audio file instead");
       return;
     }
 
@@ -140,7 +142,7 @@ export function useAudioCapture({
         try {
           replaceAudio(new Blob(chunks, { type: activeRecorder.mimeType || "audio/webm" }), `recording-${Date.now()}.webm`);
         } catch (error) {
-          onError(error instanceof Error ? error.message : "录音无效");
+          onError(error instanceof Error ? error.message : "Invalid recording");
         }
         setIsRecording(false);
       }, { once: true });
@@ -148,8 +150,8 @@ export function useAudioCapture({
       onChange(null);
       activeRecorder.start(250);
       setIsRecording(true);
-      setStatus("正在录音…");
-      setMeta(`最长 ${maxSeconds} 秒，点击停止完成`);
+      setStatus("Recording…");
+      setMeta(recordingHint);
       setTimer("00:00");
       activeInterval = setInterval(() => {
         const elapsed = Math.min(maxSeconds, Math.floor((Date.now() - startedAt) / 1_000));
@@ -160,9 +162,9 @@ export function useAudioCapture({
     } catch (error) {
       streamRef.current?.getTracks().forEach((track) => track.stop());
       streamRef.current = null;
-      onError(`无法开始录音：${error instanceof Error ? error.message : "未知错误"}`);
+      onError(`Could not start recording: ${error instanceof Error ? error.message : "Unknown error"}`);
     }
-  }, [maxSeconds, onChange, onError, replaceAudio]);
+  }, [maxSeconds, onChange, onError, recordingHint, replaceAudio]);
 
   useEffect(() => () => {
     const recorder = recorderRef.current;

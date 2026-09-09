@@ -1,6 +1,7 @@
 "use client";
 
 import type { Intent, IntentMode } from "@/lib/types";
+import { useLocale } from "./LocaleContext";
 
 interface IntentSetupCardProps {
   intent: Intent;
@@ -34,6 +35,7 @@ function ModeOption({ checked, description, label, mode, onSelect }: ModeOptionP
 }
 
 export function IntentSetupCard({ intent, onChange }: IntentSetupCardProps) {
+  const { c } = useLocale();
   function updateField(field: Exclude<keyof Intent, "mode">, value: string) {
     onChange({ ...intent, [field]: value });
   }
@@ -44,20 +46,20 @@ export function IntentSetupCard({ intent, onChange }: IntentSetupCardProps) {
 
   return (
     <aside className="panel setup-card">
-      <p className="eyebrow">测试方式</p>
+      <p className="eyebrow">{c.testMethod}</p>
       <fieldset className="mode-picker">
-        <legend className="visually-hidden">选择测试方式</legend>
+        <legend className="visually-hidden">{c.testMethod}</legend>
         <ModeOption
           checked={intent.mode === "quick"}
-          description="录音即可，适合检查流程和反馈质量"
-          label="快速体验"
+          description={c.quickDescription}
+          label={c.quick}
           mode="quick"
           onSelect={updateMode}
         />
         <ModeOption
           checked={intent.mode === "research"}
-          description="填写三项基准，适合测量意图复述率"
-          label="研究模式"
+          description={c.researchDescription}
+          label={c.researchMode}
           mode="research"
           onSelect={updateMode}
         />
@@ -66,7 +68,7 @@ export function IntentSetupCard({ intent, onChange }: IntentSetupCardProps) {
       {intent.mode === "quick" ? (
         <div className="quick-context">
           <label htmlFor="intent-takeaway">
-            一句话目标 <span>可选</span>
+            {c.oneLineGoal} <span>{c.optional}</span>
             <input
               id="intent-takeaway"
               maxLength={600}
@@ -75,13 +77,13 @@ export function IntentSetupCard({ intent, onChange }: IntentSetupCardProps) {
               placeholder="例如：I need a launch decision today."
             />
           </label>
-          <p>留空时只评估录音本身的听者费力，不能据此证明预定意图是否被准确传达。</p>
+          <p>{c.quickCaveat}</p>
         </div>
       ) : (
         <div className="research-fields">
-          <p>三项是研究测量的 ground truth，不用于评价工作内容。</p>
+          <p>{c.groundTruth}</p>
           <label htmlFor="intent-progress">
-            进展 <span>必填</span>
+            {c.progress} <span>{c.required}</span>
             <textarea
               id="intent-progress"
               rows={2}
@@ -93,7 +95,7 @@ export function IntentSetupCard({ intent, onChange }: IntentSetupCardProps) {
             />
           </label>
           <label htmlFor="intent-blocker">
-            阻塞 <span>必填</span>
+            {c.blocker} <span>{c.required}</span>
             <textarea
               id="intent-blocker"
               rows={2}
@@ -105,7 +107,7 @@ export function IntentSetupCard({ intent, onChange }: IntentSetupCardProps) {
             />
           </label>
           <label htmlFor="intent-request">
-            请求 <span>必填</span>
+            {c.request} <span>{c.required}</span>
             <textarea
               id="intent-request"
               rows={2}

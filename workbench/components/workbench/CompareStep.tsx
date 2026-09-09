@@ -3,7 +3,8 @@
 import type { CapturedAudio, Friction, JudgeResult, WorkbenchSession } from "@/lib/types";
 import { AudioPlayback } from "./AudioPlayback";
 import { AudioCapture } from "./AudioCapture";
-import { categoryLabels, formatTime, intentLabels, judgeOutcomeLabels, recallLabels } from "./labels";
+import { formatTime, getLabels } from "./labels";
+import { useLocale } from "./LocaleContext";
 
 interface CompareStepProps {
   audioResetKey: number;
@@ -20,36 +21,33 @@ interface CompareStepProps {
   onRetryAudioChange: (audio: CapturedAudio | null) => void;
 }
 
-function getReadiness(session: WorkbenchSession | null, hasFriction: boolean, canRecordRetry: boolean): string {
-  if (canRecordRetry) return "可以录制重说";
-  if (session?.demo) return "演示结果不含原始音频";
-  if (hasFriction) return "缺少原始音频";
-  return "等待原始分析";
-}
-
 function RecallCells({ side }: { side: JudgeResult["original"] }) {
+  const { locale } = useLocale();
+  const labels = getLabels(locale);
   return (
     <div className="recall-cells">
-      {(Object.entries(side.recall) as Array<["progress" | "blocker" | "request", keyof typeof recallLabels]>).map(([slot, value]) => (
-        <span key={slot}><b>{intentLabels[slot]}</b>{recallLabels[value]}</span>
+      {(Object.entries(side.recall) as Array<["progress" | "blocker" | "request", keyof typeof labels.recall]>).map(([slot, value]) => (
+        <span key={slot}><b>{labels.intent[slot]}</b>{labels.recall[value]}</span>
       ))}
     </div>
   );
 }
 
 function JudgeResultPanel({ result, showDeclaredRecall }: { result: JudgeResult; showDeclaredRecall: boolean }) {
+  const { locale, c } = useLocale();
+  const labels = getLabels(locale);
   return (
     <section className={`panel judge-result${result.outcome === "retry_clearer" ? " positive" : ""}`} aria-live="polite">
       <div className="judge-outcome">
-        <span className="eyebrow">Blind result</span>
-        <h2>{judgeOutcomeLabels[result.outcome]}</h2>
+        <span className="eyebrow">{locale === "zh" ? "盲评结果" : "Blind result"}</span>
+        <h2>{labels.outcome[result.outcome]}</h2>
         <p>{result.reason}</p>
       </div>
       <div className="judge-comparison">
-        <div><span>原版 · 费力度 {result.original.effort}/5</span>{showDeclaredRecall ? <RecallCells side={result.original} /> : <small>听者理解这段表达所需的努力，越低越轻松</small>}</div>
-        <div><span>重说版 · 费力度 {result.retry.effort}/5</span>{showDeclaredRecall ? <RecallCells side={result.retry} /> : <small>听者理解这段表达所需的努力，越低越轻松</small>}</div>
+        <div><span>{c.originalEffort} {result.original.effort}/5</span>{showDeclaredRecall ? <RecallCells side={result.original} /> : <small>{c.effortHelp}</small>}</div>
+        <div><span>{c.retryEffort} {result.retry.effort}/5</span>{showDeclaredRecall ? <RecallCells side={result.retry} /> : <small>{c.effortHelp}</small>}</div>
       </div>
-      <p className="judge-note">比较的是选中原句和本次重说。{showDeclaredRecall ? "三项意图命中以声明内容为基准。" : "AI 判断供练习参考。"} 此结果不替代真人盲评。</p>
+      <p className="judge-note">{c.judgeNote}</p>
     </section>
   );
 }
@@ -68,40 +66,42 @@ export function CompareStep({
   onJudge,
   onRetryAudioChange,
 }: CompareStepProps) {
+  const { locale, c } = useLocale();
+  const labels = getLabels(locale);
   const canRecordRetry = Boolean(selectedFriction && originalAudio && session && !session.demo);
-  const readiness = getReadiness(session, Boolean(selectedFriction), canRecordRetry);
+  const readiness = canRecordRetry ? c.canRecord : session?.demo ? c.demoNoAudio : selectedFriction ? c.missingAudio : c.waiting;
   const canJudge = canRecordRetry && Boolean(retryAudio) && !judgeBusy;
 
   return (
     <section className="screen">
       <section className="intro panel">
         <div>
-          <p className="eyebrow">再试一次</p>
-          <h2>用你自己的方式，再说一次。</h2>
-          <p>只练下面这一处。我们会把对应原句与你的重说进行比较。</p>
+          <p className="eyebrow">{c.retryEyebrow}</p>
+          <h2>{c.retryTitle}</h2>
+          <p>{c.retryBody}</p>
         </div>
         <span className={`evidence-badge${canRecordRetry ? "" : " neutral-badge"}`}>{readiness}</span>
       </section>
 
       <section className="compare-grid">
         <article className="panel target-card">
-          <p className="eyebrow">练习目标</p>
-          <h2>{selectedFriction ? `${categoryLabels[selectedFriction.category]} · ${formatTime(selectedFriction.start_sec)}–${formatTime(selectedFriction.end_sec)}` : "尚未选择摩擦点"}</h2>
-          <p>{selectedFriction?.listener_effect ?? "分析完成后默认选择 Top-1，也可以从反馈卡中切换。"}</p>
-          <AudioPlayback audio={originalAudio} label="原句" start={selectedFriction?.start_sec} end={selectedFriction?.end_sec} />
-          <div className="suggestion-block"><span>建议重说版本</span><strong>{selectedFriction?.suggested_version ?? "—"}</strong></div>
+          <p className="eyebrow">{c.target}</p>
+          <h2>{selectedFriction ? `${labels.category[selectedFriction.category]} · ${formatTime(selectedFriction.start_sec)}–${formatTime(selectedFriction.end_sec)}` : c.noTarget}</h2>
+          <p>{selectedFriction?.listener_effect ?? c.targetHelp}</p>
+          <AudioPlayback audio={originalAudio} label={c.original} start={selectedFriction?.start_sec} end={selectedFriction?.end_sec} />
+          <div className="suggestion-block"><span>{c.suggestedRetry}</span><strong>{selectedFriction?.suggested_version ?? "—"}</strong></div>
         </article>
 
         <article className="panel retry-panel">
           <div className="section-heading compact">
             <span className="section-index">03</span>
-            <div><h2>录制重说片段</h2><p>只重说当前目标，不必重录整段。</p></div>
+            <div><h2>{c.recordRetry}</h2><p>{c.recordRetryHelp}</p></div>
           </div>
           <AudioCapture
             key={`retry-${audioResetKey}`}
             id="retry"
-            idleHint="建议 5–20 秒，最长 3 分钟"
-            label="上传音频"
+            idleHint={c.retryHint}
+            label={c.upload}
             maxBytes={maxAudioBytes}
             maxSeconds={180}
             disabled={judgeBusy || !canRecordRetry}
@@ -109,12 +109,12 @@ export function CompareStep({
             onError={onError}
           />
           <button className={`primary-button full-button${judgeBusy ? " is-loading" : ""}`} type="button" disabled={!canJudge} onClick={onJudge}>
-            {judgeBusy ? "正在比较两个版本…" : "看看这次是否更清楚"}
+            {judgeBusy ? c.comparing : c.compare}
           </button>
         </article>
       </section>
 
-      {judgeResult ? <><JudgeResultPanel result={judgeResult} showDeclaredRecall={false} /><AudioPlayback audio={retryAudio} label="这次的表达" /><div className="completion"><h2>这次练习完成了。</h2><p>回听两个版本。想再试试，可以重新录音。</p><button className="primary-button" onClick={onFinish}>完成练习</button></div></> : null}
+      {judgeResult ? <><JudgeResultPanel result={judgeResult} showDeclaredRecall={false} /><AudioPlayback audio={retryAudio} label={c.thisTry} /><div className="completion"><h2>{c.completeTitle}</h2><p>{c.completeBody}</p><button className="primary-button" onClick={onFinish}>{c.complete}</button></div></> : null}
     </section>
   );
 }

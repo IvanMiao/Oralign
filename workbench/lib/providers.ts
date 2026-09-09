@@ -1,4 +1,5 @@
-import { COACH_PROMPT_VERSION, JUDGE_PROMPT_VERSION, buildCoachPrompt, buildJudgePrompt } from "@/lib/prompts";
+import { alignmentToWords } from "@/lib/speech-timing";
+import { COACH_SYSTEM_PROMPT, COACH_PROMPT_VERSION, JUDGE_PROMPT_VERSION, buildCoachPrompt, buildJudgePrompt } from "@/lib/prompts";
 import { normalizeCoachOutput, normalizeJudgeOutput } from "@/lib/schemas";
 import type {
   CoachResult,
@@ -9,6 +10,7 @@ import type {
   ProviderVersions,
   RuntimeConfig,
   Transcript,
+  TimedWord,
 } from "@/lib/types";
 
 export type FetchLike = (input: string | URL | Request, init?: RequestInit) => Promise<Response>;
@@ -94,9 +96,10 @@ function extractGeminiText(body: unknown): string {
 interface GeminiRequest extends ProviderInput {
   contents: GeminiPart[];
   schema: Record<string, unknown>;
+  systemPrompt?: string;
 }
 
-async function callGeminiJson({ config, contents, schema, fetchImpl = fetch }: GeminiRequest): Promise<unknown> {
+async function callGeminiJson({ config, contents, schema, systemPrompt, fetchImpl = fetch }: GeminiRequest): Promise<unknown> {
   const endpoint = `${config.geminiApiBase}/models/${encodeURIComponent(config.geminiModel)}:generateContent`;
   let response: Response;
   try {
@@ -108,7 +111,7 @@ async function callGeminiJson({ config, contents, schema, fetchImpl = fetch }: G
       },
       body: JSON.stringify({
         systemInstruction: {
-          parts: [{ text: "You are a careful evaluator. Follow the supplied rubric and JSON schema exactly." }],
+          parts: [{ text: systemPrompt ?? "You are a careful evaluator. Follow the supplied rubric and JSON schema exactly." }],
         },
         contents: [{ role: "user", parts: contents }],
         generationConfig: {
@@ -204,7 +207,7 @@ export async function transcribeAudio({ audio, config, fetchImpl = fetch }: Tran
           start: Number(word.start ?? 0),
           end: Number(word.end ?? 0),
           type: String(word.type ?? "word"),
-          logprob: Number.isFinite(Number(word.logprob)) ? Number(word.logprob) : null,
+          logprob: typeof word.logprob === "number" && Number.isFinite(word.logprob) ? word.logprob : null,
         }))
       : [],
   };
@@ -232,13 +235,15 @@ const coachSchema: Record<string, unknown> = {
       items: {
         type: "object",
         additionalProperties: false,
-        required: ["start_sec", "end_sec", "category", "intent_slot", "original_excerpt", "listener_effect", "evidence_sources", "evidence_level", "suggested_version", "optional_style_only"],
+        required: ["start_sec", "end_sec", "category", "intent_slot", "original_excerpt", "observation", "practice_cue", "listener_effect", "evidence_sources", "evidence_level", "suggested_version", "optional_style_only"],
         properties: {
           start_sec: { type: "number", minimum: 0 },
           end_sec: { type: "number", minimum: 0 },
           category: { type: "string", enum: ["intelligibility", "processing", "fluency", "pragmatics"] },
           intent_slot: { type: "string", enum: ["progress", "blocker", "request", "overall"] },
           original_excerpt: { type: "string" },
+          observation: { type: "string" },
+          practice_cue: { type: "string" },
           listener_effect: { type: "string" },
           evidence_sources: { type: "array", minItems: 1, items: { type: "string", enum: ["audio", "text", "timing", "context", "asr_disagreement"] } },
           evidence_level: { type: "string", enum: ["high", "medium"] },
@@ -265,8 +270,9 @@ export async function analyzeFriction(input: AnalyzeInput): Promise<CoachResult>
       { inlineData: { mimeType: input.audio.mimeType, data: input.audio.base64 } },
     ],
     schema: coachSchema,
+    systemPrompt: COACH_SYSTEM_PROMPT,
   });
-  return normalizeCoachOutput(raw);
+  return normalizeCoachOutput(raw, { requirePracticeFields: true });
 }
 
 const recallSchema = {
@@ -370,10 +376,11 @@ export async function synthesizeSpeech({ text, config, fetchImpl = fetch }: Synt
   mimeType: string;
   base64: string;
   characterCost: string | null;
+  words: TimedWord[];
 }> {
   const query = new URLSearchParams({ output_format: "mp3_22050_32" });
   if (config.elevenLabsZeroRetention) query.set("enable_logging", "false");
-  const endpoint = `${config.elevenLabsApiBase}/text-to-speech/${encodeURIComponent(config.elevenLabsVoiceId)}?${query}`;
+  const endpoint = `${config.elevenLabsApiBase}/text-to-speech/${encodeURIComponent(config.elevenLabsVoiceId)}/with-timestamps?${query}`;
 
   let response: Response;
   try {
@@ -415,10 +422,17 @@ export async function synthesizeSpeech({ text, config, fetchImpl = fetch }: Synt
     });
   }
 
-  const buffer = Buffer.from(await response.arrayBuffer());
+  const body = await response.json() as Record<string, unknown>;
+  if (typeof body.audio_base64 !== "string" || !body.audio_base64.length ||
+      !/^[A-Za-z0-9+/]+={0,2}$/.test(body.audio_base64)) {
+    throw new ProviderError("elevenlabs", "ElevenLabs 返回的参考音频无效", { code: "INVALID_TTS_AUDIO" });
+  }
+  // Normalized text matches what was actually spoken (e.g. expanded numbers).
+  const normalized = alignmentToWords(body.normalized_alignment);
   return {
-    mimeType: response.headers.get("content-type")?.split(";")[0] || "audio/mpeg",
-    base64: buffer.toString("base64"),
+    mimeType: "audio/mpeg",
+    base64: body.audio_base64,
+    words: normalized.length ? normalized : alignmentToWords(body.alignment),
     characterCost: response.headers.get("character-cost"),
   };
 }

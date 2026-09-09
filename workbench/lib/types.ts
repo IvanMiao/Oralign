@@ -61,6 +61,8 @@ export interface Friction {
   intent_slot: IntentSlot;
   original_excerpt: string;
   listener_effect: string;
+  observation?: string;
+  practice_cue?: string;
   evidence_sources: EvidenceSource[];
   evidence_level: EvidenceLevel;
   suggested_version: string;
@@ -162,4 +164,10 @@ export interface PublicConfig {
     maxAudioBytes: number;
     maxRecordingSeconds: number;
   };
+}
+
+export interface TimedWord {
+  text: string;
+  start: number;
+  end: number;
 }

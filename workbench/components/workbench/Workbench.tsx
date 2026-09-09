@@ -18,6 +18,7 @@ import { CaptureStep } from "./CaptureStep";
 import { CompareStep } from "./CompareStep";
 import { ProviderStatus } from "./ProviderStatus";
 import { ReviewStep } from "./ReviewStep";
+import { LocaleContext, getCopy, type Locale } from "./LocaleContext";
 
 type Step = "capture" | "review" | "compare";
 type NoticeKind = "info" | "success" | "error";
@@ -41,20 +42,15 @@ const emptyHumanEvaluation: HumanEvaluation = {
   notes: "",
 };
 
-const steps: Array<{ id: Step; index: string; label: string }> = [
-  { id: "capture", index: "01", label: "说一段" },
-  { id: "review", index: "02", label: "看重点" },
-  { id: "compare", index: "03", label: "重说与对比" },
-];
-
-function sessionLabel(session: WorkbenchSession | null): string {
-  if (!session) return "未创建会话";
-  const kind = session.demo ? "演示" : "会话";
-  const mode = session.intent.mode === "research" ? "研究模式" : "快速体验";
+function sessionLabel(session: WorkbenchSession | null, c: Record<string, string>): string {
+  if (!session) return c.noSession;
+  const kind = session.demo ? c.demoSession : c.session;
+  const mode = session.intent.mode === "research" ? c.researchMode : c.quick;
   return `${kind} ${session.session_id} · ${mode} · ${session.versions.coach_prompt}`;
 }
 
 export function Workbench() {
+  const [locale, setLocale] = useState<Locale>("zh");
   const [research, setResearch] = useState(false);
   const [activeStep, setActiveStep] = useState<Step>("capture");
   const [config, setConfig] = useState<PublicConfig | null>(null);
@@ -72,6 +68,7 @@ export function Workbench() {
   const [judgeBusy, setJudgeBusy] = useState(false);
   const [retryResetKey, setRetryResetKey] = useState(0);
   const [audioResetKey, setAudioResetKey] = useState(0);
+  const c = getCopy(locale);
 
   const changeRetryAudio = useCallback((audio: CapturedAudio | null) => { setRetryAudio(audio); setJudgeResult(null); }, []);
 
@@ -88,10 +85,15 @@ export function Workbench() {
         if (!cancelled) setConfig(value);
       })
       .catch((error: unknown) => {
-        if (!cancelled) showError(`无法读取服务配置：${error instanceof Error ? error.message : "未知错误"}`);
+        if (!cancelled) showError(`${locale === "zh" ? "无法读取服务配置" : "Could not read service configuration"}: ${error instanceof Error ? error.message : locale === "zh" ? "未知错误" : "Unknown error"}`);
       });
     return () => { cancelled = true; };
-  }, [showError]);
+  }, [locale, showError]);
+
+  useEffect(() => {
+    document.documentElement.lang = locale === "zh" ? "zh-CN" : "en";
+    document.title = locale === "zh" ? "Oralign · 把英语说清楚" : "Oralign · Speak English clearly";
+  }, [locale]);
 
   function navigateTo(step: Step) {
     setActiveStep(step);
@@ -114,7 +116,7 @@ export function Workbench() {
     clearSessionState();
     setIntent(emptyIntent);
     navigateTo("capture");
-    setNotice({ kind: "info", message: "当前会话已从浏览器内存清除。" });
+    setNotice({ kind: "info", message: c.cleared });
   }
 
   function validateClientIntent(): Intent | null {
@@ -135,7 +137,7 @@ export function Workbench() {
     if (!missingField) return { ...trimmed, takeaway: "" };
 
     document.querySelector<HTMLTextAreaElement>(`#intent-${missingField}`)?.focus();
-    showError("研究模式需要填写进展、阻塞和请求；也可以切回快速体验直接分析");
+    showError(locale === "zh" ? "研究模式需要填写进展、阻塞和请求；也可以切回快速体验直接分析" : "Research mode requires Progress, Blocker, and Request. You can also switch back to Quick practice.");
     return null;
   }
 
@@ -144,11 +146,11 @@ export function Workbench() {
     const validatedIntent = validateClientIntent();
     if (!validatedIntent) return;
     if (!originalAudio) {
-      showError("请先录制或上传原始音频");
+      showError(locale === "zh" ? "请先录制或上传原始音频" : "Record or upload your original audio first.");
       return;
     }
     if (!config?.providers.gemini || !config.providers.elevenLabsStt) {
-      showError("Gemini 与 ElevenLabs Scribe 尚未配置，请按照 workbench/docs/api-configuration.md 设置 .env.local");
+      showError(locale === "zh" ? "Gemini 与 ElevenLabs Scribe 尚未配置，请按照 workbench/docs/api-configuration.md 设置 .env.local" : "Gemini and ElevenLabs Scribe are not configured. Set .env.local according to workbench/docs/api-configuration.md.");
       return;
     }
 
@@ -165,9 +167,9 @@ export function Workbench() {
       setJudgeResult(null);
       setSelectedFrictionId(nextSession.coach.frictions[0]?.id ?? null);
       navigateTo("review");
-      setNotice({ kind: "success", message: "分析完成，先从最值得改的一处开始。" });
+      setNotice({ kind: "success", message: c.analysisDone });
     } catch (error) {
-      showError(error instanceof Error ? error.message : "分析失败");
+      showError(error instanceof Error ? error.message : locale === "zh" ? "分析失败" : "Analysis failed");
     } finally {
       setAnalyzeBusy(false);
     }
@@ -183,9 +185,9 @@ export function Workbench() {
       setIntent(demo.intent);
       setSelectedFrictionId(demo.coach.frictions[0]?.id ?? null);
       navigateTo("review");
-      setNotice({ kind: "info", message: "这是示例反馈，不含原始录音。开始新练习即可体验真实回听和重说对比。" });
+      setNotice({ kind: "info", message: c.demoLoaded });
     } catch (error) {
-      showError(error instanceof Error ? error.message : "演示载入失败");
+      showError(error instanceof Error ? error.message : locale === "zh" ? "Could not load the example" : "Could not load the example");
     } finally {
       setDemoBusy(false);
     }
@@ -205,7 +207,7 @@ export function Workbench() {
 
   async function runJudge() {
     if (!session || session.demo || !originalAudio || !retryAudio || !selectedFriction) {
-      showError("需要真实原始录音、分析结果和重说音频才能运行 A/B Judge");
+      showError(locale === "zh" ? "需要真实原始录音、分析结果和重说音频才能运行 A/B Judge" : "A real original recording, analysis, and retry recording are required for comparison.");
       return;
     }
 
@@ -223,9 +225,9 @@ export function Workbench() {
         }),
       });
       setJudgeResult(result);
-      showSuccess("对比完成。回听两个版本，感受这次表达的变化。");
+      showSuccess(c.comparisonDone);
     } catch (error) {
-      showError(error instanceof Error ? error.message : "A/B 盲评失败");
+      showError(error instanceof Error ? error.message : locale === "zh" ? "A/B 盲评失败" : "Comparison failed");
     } finally {
       setJudgeBusy(false);
     }
@@ -253,26 +255,30 @@ export function Workbench() {
     link.download = `oralign-${session.session_id}.json`;
     link.click();
     setTimeout(() => URL.revokeObjectURL(url), 0);
-    showSuccess("共评结果已导出；JSON 不包含音频字节或 API 密钥。");
+    showSuccess(c.exported);
   }
 
   return (
-    <>
-      <a className="skip-link" href="#workspace">跳到工作区</a>
+    <LocaleContext.Provider value={{ locale, setLocale, c }}>
+      <a className="skip-link" href="#workspace">{c.skip}</a>
       <header className="topbar">
-        <div><p className="eyebrow">Oralign</p><h1>{research ? "研究工作台" : "把英语说清楚"}</h1></div>
+        <div><p className="eyebrow">Oralign</p><h1>{research ? c.research : c.practice}</h1></div>
         <div className="topbar-actions">
           {research ? <ProviderStatus config={config} /> : null}
-          <button className="quiet-button" disabled={analyzeBusy || judgeBusy} onClick={() => setResearch(!research)}>{research ? "返回练习" : "研究工具"}</button>
+          <div className="language-switch" aria-label="Language">
+            <button className={locale === "zh" ? "active" : ""} type="button" aria-pressed={locale === "zh"} onClick={() => setLocale("zh")}>中</button>
+            <button className={locale === "en" ? "active" : ""} type="button" aria-pressed={locale === "en"} onClick={() => setLocale("en")}>EN</button>
+          </div>
+          <button className="quiet-button" disabled={analyzeBusy || judgeBusy} onClick={() => setResearch(!research)}>{research ? c.backToPractice : c.researchTool}</button>
           <button className={`quiet-button${demoBusy ? " is-loading" : ""}`} type="button" disabled={demoBusy || analyzeBusy || judgeBusy} onClick={loadDemo}>
-            {demoBusy ? "载入中…" : "看看示例"}
+            {demoBusy ? c.loading : c.example}
           </button>
         </div>
       </header>
 
       <main id="workspace" className="workspace">
-        <nav className="steps" aria-label="评测流程">
-          {steps.map((step) => (
+        <nav className="steps" aria-label={c.flow}>
+          {([{ id: "capture", index: "01", label: c.speak }, { id: "review", index: "02", label: c.focus }, { id: "compare", index: "03", label: c.retry }] as Array<{ id: Step; index: string; label: string }>).map((step) => (
             <button
               key={step.id}
               className={`step${activeStep === step.id ? " active" : ""}`}
@@ -337,13 +343,13 @@ export function Workbench() {
         </div>
 
         <footer className="workbench-footer">
-          <p>{research ? sessionLabel(session) : "一次只练一个重点，保留你自己的表达方式。"}</p>
+          <p>{research ? sessionLabel(session, c) : c.practiceFooter}</p>
           <div>
-            <button className="quiet-button" type="button" disabled={analyzeBusy || judgeBusy} onClick={resetSession}>开始新练习</button>
-            {research ? <button className="secondary-button" type="button" disabled={!session} onClick={exportSession}>导出共评 JSON</button> : null}
+            <button className="quiet-button" type="button" disabled={analyzeBusy || judgeBusy} onClick={resetSession}>{c.newPractice}</button>
+            {research ? <button className="secondary-button" type="button" disabled={!session} onClick={exportSession}>{c.export}</button> : null}
           </div>
         </footer>
       </main>
-    </>
+    </LocaleContext.Provider>
   );
 }

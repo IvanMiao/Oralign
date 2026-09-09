@@ -1,0 +1,10 @@
+.player { width: 100%; display: grid; gap: 0.75rem; margin-top: 0.75rem; }
+.player audio { width: 100%; }
+.speed { display: flex; align-items: center; gap: 0.75rem; font-size: 0.875rem; }
+.speed select { padding: 0.35rem 0.6rem; border: 1px solid #b4c7bd; border-radius: 0.5rem; background: white; color: #233e32; }
+.hint { margin: 0; font-size: 0.875rem; color: #4b6358; }
+.words { display: flex; flex-wrap: wrap; gap: 0.25rem; }
+.words button { border: 1px solid transparent; border-radius: 0.35rem; background: transparent; color: #233e32; padding: 0.25rem 0.4rem; font: inherit; cursor: pointer; }
+.words button:hover { background: #e2eee7; }
+.words button.active { background: #244e3b; color: white; }
+.words button:focus-visible { outline: 2px solid #244e3b; outline-offset: 2px; }

@@ -1,4 +1,4 @@
-import type { AudioPayload, CapturedAudio } from "@/lib/types";
+import type { AudioPayload, CapturedAudio, TimedWord } from "@/lib/types";
 
 interface ApiErrorBody {
   error?: {
@@ -35,6 +35,7 @@ export async function audioToPayload(audio: CapturedAudio): Promise<AudioPayload
 }
 
 export interface ReferenceSpeech {
+  words?: TimedWord[];
   mimeType: string;
   base64: string;
 }

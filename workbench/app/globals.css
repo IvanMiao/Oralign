@@ -88,6 +88,9 @@ p { color: var(--muted-foreground); line-height: 1.65; }
 }
 .provider-status span, .review-key span { display: inline-flex; align-items: center; gap: 7px; }
 .topbar-actions { display: flex; align-items: center; gap: 16px; }
+.language-switch { display: inline-flex; padding: 3px; background: var(--surface-muted); border: 1px solid var(--border); border-radius: 999px; }
+.language-switch button { min-width: 32px; padding: 5px 7px; color: var(--muted-foreground); background: transparent; border: 0; border-radius: 999px; font-size: .75rem; font-weight: 700; }
+.language-switch button.active { color: white; background: var(--primary); }
 .status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 999px; background: var(--neutral); }
 .status-dot.warning, .status-dot.medium { background: var(--warning); }
 .status-dot.high { background: var(--success); }
@@ -403,6 +406,7 @@ summary { cursor: pointer; color: var(--primary); font-weight: 600; line-height:
  .topbar { gap: 14px; }
  .topbar-actions { flex-direction: row; flex-wrap: wrap; gap: 4px; }
  .topbar-actions .quiet-button { width: auto; padding: 8px; font-size: 12px; }
+ .language-switch button { width: auto; min-height: 28px; padding: 5px 7px; }
  .steps { grid-template-columns: repeat(3, 1fr); gap: 4px; }
  .step { padding: 8px 2px; font-size: 12px; }
  .practice-heading { margin-top: 24px; }

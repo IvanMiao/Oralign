@@ -1,4 +1,5 @@
 import type { PublicConfig } from "@/lib/types";
+import { useLocale } from "./LocaleContext";
 
 interface ProviderStatusProps {
   config: PublicConfig | null;
@@ -10,21 +11,23 @@ interface StatusItemProps {
 }
 
 function StatusItem({ label, ready }: StatusItemProps) {
-  let statusText = "检查中";
+  const { c } = useLocale();
+  let statusText = c.checking;
   let dotClass = "neutral";
   if (ready === true) {
-    statusText = "已配置";
+    statusText = c.configured;
     dotClass = "high";
   } else if (ready === false) {
-    statusText = "待配置";
+    statusText = c.setupNeeded;
     dotClass = "warning";
   }
   return <span><i className={`status-dot ${dotClass}`} aria-hidden="true" />{label} {statusText}</span>;
 }
 
 export function ProviderStatus({ config }: ProviderStatusProps) {
+  const { c } = useLocale();
   return (
-    <div className="provider-status" aria-label="服务状态">
+    <div className="provider-status" aria-label={c.serviceStatus}>
       <StatusItem label="Gemini" ready={config?.providers.gemini ?? null} />
       <StatusItem label="Scribe" ready={config?.providers.elevenLabsStt ?? null} />
       <StatusItem label="TTS" ready={config?.providers.elevenLabsTts ?? null} />

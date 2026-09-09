@@ -86,3 +86,27 @@ test("normalizeJudgeOutput keeps recall and effort bounded", () => {
   assert.equal(result.decision, "b_clearer");
   assert.equal(result.effort_b, 2);
 });
+
+const practiceCard = {
+  start_sec: 1, end_sec: 2, category: "processing", intent_slot: "overall",
+  original_excerpt: "this one", listener_effect: "The reference is unclear.",
+  observation: "The referent is missing.", practice_cue: "Name the object.",
+  evidence_sources: ["text"], evidence_level: "medium", suggested_version: "this page",
+  optional_style_only: false,
+};
+function coachResult(card = practiceCard, usable: unknown = true) {
+  return { quality: { usable, reason: usable ? "ok" : "low_audio_quality", note: "" },
+    summary: "Feedback", frictions: [card] };
+}
+
+test("Coach rejects coerced booleans, empty clips and missing new practice fields", () => {
+  assert.throws(() => normalizeCoachOutput(coachResult(practiceCard, "false")), ValidationError);
+  assert.throws(() => normalizeCoachOutput(coachResult({ ...practiceCard, end_sec: 1 })), ValidationError);
+  assert.throws(() => normalizeCoachOutput(coachResult({ ...practiceCard, practice_cue: "" }),
+    { requirePracticeFields: true }), ValidationError);
+});
+
+test("Coach suppresses style-only feedback and feedback on unusable audio", () => {
+  assert.deepEqual(normalizeCoachOutput(coachResult({ ...practiceCard, optional_style_only: true })).frictions, []);
+  assert.deepEqual(normalizeCoachOutput(coachResult(practiceCard, false)).frictions, []);
+});

@@ -141,15 +141,18 @@ export function decodeAudioInput(value: unknown, maxBytes = 12 * 1024 * 1024): D
   };
 }
 
-export function normalizeCoachOutput(value: unknown): CoachResult {
+export function normalizeCoachOutput(value: unknown, options: { requirePracticeFields?: boolean } = {}): CoachResult {
   const result = asObject(value, "Coach 返回格式无效");
   const quality = asObject(result.quality, "Coach 缺少质量判断");
+  if (typeof quality.usable !== "boolean") throw new ValidationError("quality.usable 必须是布尔值");
   const rawFrictions = Array.isArray(result.frictions) ? result.frictions.slice(0, 3) : [];
 
   const frictions = rawFrictions.map((raw, index) => {
     const item = asObject(raw, `摩擦候选 ${index + 1} 无效`);
     const startSec = boundedNumber(item.start_sec, "start_sec", 0, 3_600);
     const endSec = boundedNumber(item.end_sec, "end_sec", startSec, 3_600);
+    if (endSec <= startSec) throw new ValidationError("片段必须有有效时长");
+    if (typeof item.optional_style_only !== "boolean") throw new ValidationError("optional_style_only 必须是布尔值");
     const sources = Array.isArray(item.evidence_sources)
       ? [...new Set(item.evidence_sources.filter((source): source is EvidenceSource => (
           typeof source === "string" && evidenceSources.has(source as EvidenceSource)
@@ -166,6 +169,8 @@ export function normalizeCoachOutput(value: unknown): CoachResult {
       category: enumValue(item.category, categories, "category"),
       intent_slot: enumValue(item.intent_slot, intentSlots, "intent_slot"),
       original_excerpt: requiredString(item.original_excerpt, "original_excerpt", 500),
+      observation: options.requirePracticeFields ? requiredString(item.observation, "observation", 800) : optionalString(item.observation, 800),
+      practice_cue: options.requirePracticeFields ? requiredString(item.practice_cue, "practice_cue", 500) : optionalString(item.practice_cue, 500),
       listener_effect: requiredString(item.listener_effect, "listener_effect", 800),
       evidence_sources: sources,
       evidence_level: enumValue(item.evidence_level, evidenceLevels, "evidence_level"),
@@ -181,7 +186,7 @@ export function normalizeCoachOutput(value: unknown): CoachResult {
       note: optionalString(quality.note, 800),
     },
     summary: requiredString(result.summary, "summary", 1_000),
-    frictions,
+    frictions: quality.usable ? frictions.filter((item) => !item.optional_style_only) : [],
   };
 }
 
