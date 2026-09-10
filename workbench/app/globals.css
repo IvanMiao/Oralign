@@ -417,3 +417,18 @@ summary { cursor: pointer; color: var(--primary); font-weight: 600; line-height:
  .friction-title h2 { font-size: 17px; }
  .suggestion-block strong { font-size: 18px; }
 }
+
+.playback-options { display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; margin-top: .5rem; }
+.playback-options label { display: flex; gap: .4rem; align-items: center; }
+.playback-options input { width: auto; }
+.transcript-explorer { margin-top: 1.5rem; }
+.transcript-words { font-size: 1.1rem; line-height: 2.2; margin: 1rem 0; }
+.transcript-words button { color: inherit; font: inherit; background: transparent; border: 0; border-radius: .25rem; padding: .1rem .2rem; cursor: pointer; }
+.transcript-words button.has-feedback { text-decoration: underline; text-decoration-color: #a45d32; text-underline-offset: .3rem; }
+.transcript-words button.is-speaking { background: #d7e7d5; color: #163421; }
+.transcript-words button:focus-visible { outline: 2px solid #285942; }
+.gap-marker { color: #71563e; font-size: .75rem; margin: 0 .25rem; }
+.listening-groups { display: grid; gap: .5rem; padding-top: .75rem; }
+.listening-groups button { text-align: left; white-space: normal; }
+.candidate-detail { margin: .75rem 0; }
+.candidate-detail > summary { cursor: pointer; padding: .75rem; line-height: 1.6; }

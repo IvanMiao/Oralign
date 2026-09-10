@@ -60,6 +60,8 @@ export function FrictionCard({
         <div className="friction-rank"><b>{index + 1}</b><span>{index === 0 ? c.top : c.candidate}</span></div>
         <div className="friction-title">
           <div className="badge-row">
+            {friction.focus ? <span className="meta-pill">{locale === "zh" ? ({ pronunciation: "发音与声音", pause: "停顿与意群", wording: "用词", organization: "表达组织" }[friction.focus]) : friction.focus}</span> : null}
+            {friction.impact ? <span className="meta-pill">{friction.impact === "comprehension" ? (locale === "zh" ? "可能影响听懂" : "Comprehension") : (locale === "zh" ? "可以更顺畅" : "Processing ease")}</span> : null}
             <span className={`level-badge ${friction.evidence_level}`}>{friction.evidence_level === "high" ? c.highEvidence : c.mediumEvidence}</span>
             <span className="meta-pill">{labels.category[friction.category]}</span>
             <span className="meta-pill">{labels.intent[friction.intent_slot]}</span>

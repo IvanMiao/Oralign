@@ -28,6 +28,7 @@ test("comparison crops only the selected interval and closes the decoder", async
     assert.equal(view.getUint32(40, true), 8);
     assert.equal(view.getInt16(44, true), 16383);
     assert.equal(closed, true);
+    await assert.rejects(cropAudio({blob, size: blob.size, mimeType: "audio/webm", fileName: "test.webm"}, 1, 3.5), /时间范围无效/);
     await assert.rejects(cropAudio({blob, size: blob.size, mimeType: "audio/webm", fileName: "test.webm"}, 4, 5), /时间范围无效/);
   } finally { globalThis.AudioContext = previous; }
 });

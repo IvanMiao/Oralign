@@ -159,9 +159,9 @@ export async function transcribeAudio({ audio, config, fetchImpl = fetch }: Tran
   const form = new FormData();
   form.append("file", new Blob([new Uint8Array(audio.buffer)], { type: audio.mimeType }), audio.fileName);
   form.append("model_id", config.elevenLabsSttModel);
-  form.append("language_code", "eng");
+
   form.append("tag_audio_events", "true");
-  form.append("diarize", "false");
+  form.append("diarize", "true");
   form.append("timestamps_granularity", "word");
 
   const query = config.elevenLabsZeroRetention ? "?enable_logging=false" : "";
@@ -204,9 +204,10 @@ export async function transcribeAudio({ audio, config, fetchImpl = fetch }: Tran
     words: Array.isArray(body.words)
       ? body.words.map((word) => ({
           text: String(word.text ?? ""),
-          start: Number(word.start ?? 0),
-          end: Number(word.end ?? 0),
+          start: typeof word.start === "number" ? word.start : NaN,
+          end: typeof word.end === "number" ? word.end : NaN,
           type: String(word.type ?? "word"),
+          speaker_id: typeof word.speaker_id === "string" ? word.speaker_id : null,
           logprob: typeof word.logprob === "number" && Number.isFinite(word.logprob) ? word.logprob : null,
         }))
       : [],
@@ -231,12 +232,16 @@ const coachSchema: Record<string, unknown> = {
     summary: { type: "string" },
     frictions: {
       type: "array",
-      maxItems: 3,
+      maxItems: 8,
       items: {
         type: "object",
         additionalProperties: false,
-        required: ["start_sec", "end_sec", "category", "intent_slot", "original_excerpt", "observation", "practice_cue", "listener_effect", "evidence_sources", "evidence_level", "suggested_version", "optional_style_only"],
+        required: ["start_word_index", "end_word_index", "focus", "impact", "start_sec", "end_sec", "category", "intent_slot", "original_excerpt", "observation", "practice_cue", "listener_effect", "evidence_sources", "evidence_level", "suggested_version", "optional_style_only"],
         properties: {
+          start_word_index: { type: "integer", minimum: 0 },
+          end_word_index: { type: "integer", minimum: 0 },
+          focus: { type: "string", enum: ["pronunciation", "pause", "wording", "organization"] },
+          impact: { type: "string", enum: ["comprehension", "ease"] },
           start_sec: { type: "number", minimum: 0 },
           end_sec: { type: "number", minimum: 0 },
           category: { type: "string", enum: ["intelligibility", "processing", "fluency", "pragmatics"] },
@@ -272,7 +277,7 @@ export async function analyzeFriction(input: AnalyzeInput): Promise<CoachResult>
     schema: coachSchema,
     systemPrompt: COACH_SYSTEM_PROMPT,
   });
-  return normalizeCoachOutput(raw, { requirePracticeFields: true });
+  return normalizeCoachOutput(raw, { requirePracticeFields: true, transcript: input.transcript });
 }
 
 const recallSchema = {

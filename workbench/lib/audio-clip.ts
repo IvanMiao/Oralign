@@ -11,19 +11,36 @@ export function encodeMonoWav(samples: Float32Array, sampleRate: number): Blob {
   samples.forEach((sample, i) => { const value = Math.max(-1, Math.min(1, sample)); view.setInt16(44 + i * 2, value * (value < 0 ? 32768 : 32767), true); });
   return new Blob([buffer], { type: "audio/wav" });
 }
+// Share decoding across the original player, timeline, and candidate clips.
+// Weak keys keep this cache scoped to recordings still referenced by the session.
+const decodedRecordings = new WeakMap<Blob, Promise<AudioBuffer>>();
+function decodeRecording(blob: Blob): Promise<AudioBuffer> {
+  const existing = decodedRecordings.get(blob);
+  if (existing) return existing;
+  const pending = (async () => {
+    const context = new AudioContext();
+    try { return await context.decodeAudioData(await blob.arrayBuffer()); }
+    finally { await context.close(); }
+  })();
+  decodedRecordings.set(blob, pending);
+  void pending.catch(() => decodedRecordings.delete(blob));
+  return pending;
+}
+
 export async function cropAudio(audio: CapturedAudio, start: number, end: number): Promise<CapturedAudio> {
-  const context = new AudioContext();
-  try {
-    const decoded = await context.decodeAudioData(await audio.blob.arrayBuffer());
-    const first = Math.max(0, Math.floor(start * decoded.sampleRate));
-    const last = Math.min(decoded.length, Math.ceil(end * decoded.sampleRate));
-    if (!Number.isFinite(first) || !Number.isFinite(last) || last <= first) throw new Error("原句时间范围无效，请重新分析录音。");
-    const mono = new Float32Array(last - first);
-    for (let channel = 0; channel < decoded.numberOfChannels; channel++) {
-      const data = decoded.getChannelData(channel);
-      for (let i = first; i < last; i++) mono[i - first] += data[i] / decoded.numberOfChannels;
-    }
-    const blob = encodeMonoWav(mono, decoded.sampleRate);
-    return { blob, fileName: "original-excerpt.wav", mimeType: blob.type, size: blob.size };
-  } finally { await context.close(); }
+  const decoded = await decodeRecording(audio.blob);
+  const duration = decoded.length / decoded.sampleRate;
+  if (!Number.isFinite(start) || !Number.isFinite(end) || start < 0 || end <= start || end > duration + 1 / decoded.sampleRate) {
+    throw new Error("原句时间范围无效，请重新分析录音。");
+  }
+  const first = Math.floor(start * decoded.sampleRate);
+  const last = Math.min(decoded.length, Math.ceil(end * decoded.sampleRate));
+  if (last <= first) throw new Error("原句时间范围无效，请重新分析录音。");
+  const mono = new Float32Array(last - first);
+  for (let channel = 0; channel < decoded.numberOfChannels; channel++) {
+    const data = decoded.getChannelData(channel);
+    for (let i = first; i < last; i++) mono[i - first] += data[i] / decoded.numberOfChannels;
+  }
+  const blob = encodeMonoWav(mono, decoded.sampleRate);
+  return { blob, fileName: "original-excerpt.wav", mimeType: blob.type, size: blob.size };
 }

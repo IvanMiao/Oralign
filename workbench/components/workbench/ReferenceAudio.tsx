@@ -51,6 +51,7 @@ export function ReferenceAudio({ speech, onError }: {
 
   return <div className={styles.player}>
     <audio ref={audioRef} aria-label={c.referenceAudio} controls
+      onPlay={(event) => { document.querySelectorAll("audio").forEach((other) => { if (other !== event.currentTarget) other.pause(); }); }}
       src={`data:${speech.mimeType};base64,${speech.base64}`}
       onTimeUpdate={(event) => setTime(event.currentTarget.currentTime)}
       onEnded={() => { stopAt.current = null; }} />

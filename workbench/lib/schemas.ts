@@ -8,6 +8,8 @@ import type {
   IntentMode,
   IntentSlot,
   RecallLevel,
+  Transcript,
+  Friction,
 } from "@/lib/types";
 
 const categories = new Set<FrictionCategory>(["intelligibility", "processing", "fluency", "pragmatics"]);
@@ -141,11 +143,11 @@ export function decodeAudioInput(value: unknown, maxBytes = 12 * 1024 * 1024): D
   };
 }
 
-export function normalizeCoachOutput(value: unknown, options: { requirePracticeFields?: boolean } = {}): CoachResult {
+export function normalizeCoachOutput(value: unknown, options: { requirePracticeFields?: boolean; transcript?: Transcript } = {}): CoachResult {
   const result = asObject(value, "Coach 返回格式无效");
   const quality = asObject(result.quality, "Coach 缺少质量判断");
   if (typeof quality.usable !== "boolean") throw new ValidationError("quality.usable 必须是布尔值");
-  const rawFrictions = Array.isArray(result.frictions) ? result.frictions.slice(0, 3) : [];
+  const rawFrictions = Array.isArray(result.frictions) ? result.frictions.slice(0, 8) : [];
 
   const frictions = rawFrictions.map((raw, index) => {
     const item = asObject(raw, `摩擦候选 ${index + 1} 无效`);
@@ -162,6 +164,24 @@ export function normalizeCoachOutput(value: unknown, options: { requirePracticeF
       throw new ValidationError(`摩擦候选 ${index + 1} 缺少证据来源`);
     }
 
+    let anchor: Partial<Friction> = {};
+    if (options.transcript) {
+      const words = options.transcript.words.filter((word) => word.type === "word");
+      const first = item.start_word_index;
+      const last = item.end_word_index;
+      if (typeof first !== "number" || typeof last !== "number" || !Number.isInteger(first) || !Number.isInteger(last) || first < 0 || last < first || last >= words.length) {
+        throw new ValidationError("摩擦点缺少有效的转写词定位");
+      }
+      const span = words.slice(first, last + 1);
+      if (span.some((word, i) => !Number.isFinite(word.start) || !Number.isFinite(word.end) || word.start < 0 || word.end <= word.start || (i > 0 && word.start < span[i - 1].end))) {
+        throw new ValidationError("摩擦点时间线不可靠，请重新录音");
+      }
+      const focus = enumValue(item.focus, new Set(["pronunciation", "pause", "wording", "organization"] as const), "focus");
+      if (focus === "pronunciation" && !sources.includes("audio")) throw new ValidationError("发音判断必须有声音证据");
+      anchor = { start_word_index: first, end_word_index: last, start_sec: span[0].start,
+        end_sec: span[span.length - 1].end, original_excerpt: span.map((word) => word.text).join(" "),
+        focus, impact: enumValue(item.impact, new Set(["comprehension", "ease"] as const), "impact") };
+    }
     return {
       id: `friction-${index + 1}`,
       start_sec: startSec,
@@ -176,6 +196,7 @@ export function normalizeCoachOutput(value: unknown, options: { requirePracticeF
       evidence_level: enumValue(item.evidence_level, evidenceLevels, "evidence_level"),
       suggested_version: requiredString(item.suggested_version, "suggested_version", 800),
       optional_style_only: Boolean(item.optional_style_only),
+      ...anchor,
     };
   });
 

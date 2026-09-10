@@ -44,7 +44,8 @@ test("transcribeAudio sends multipart Scribe v2 request", async () => {
     assert.equal(new Headers(init?.headers).get("xi-api-key"), "eleven-test-key");
     const form = init?.body as FormData;
     assert.equal(form.get("model_id"), "scribe_v2");
-    assert.equal(form.get("language_code"), "eng");
+    assert.equal(form.get("language_code"), null);
+    assert.equal(form.get("diarize"), "true");
     return Response.json({
       text: "The page is done.",
       language_code: "eng",
@@ -63,6 +64,7 @@ test("analyzeFriction sends inline audio and validates structured Coach JSON", a
     quality: { usable: true, reason: "ok", note: "clear" },
     summary: "阻塞表达需要回推。",
     frictions: [{
+      start_word_index: 0, end_word_index: 2, focus: "wording", impact: "comprehension",
       start_sec: 2,
       end_sec: 5,
       category: "processing",
@@ -91,7 +93,11 @@ test("analyzeFriction sends inline audio and validates structured Coach JSON", a
   const result = await analyzeFriction({
     audio: createAudio(),
     intent: { mode: "research", takeaway: "", progress: "done", blocker: "pending", request: "confirm" },
-    transcript: { text: "page done, review maybe not yet", language_code: "eng", language_probability: 1, words: [] },
+    transcript: { text: "page done, review maybe not yet", language_code: "eng", language_probability: 1, words: [
+      { text: "maybe", start: 2, end: 3, type: "word", logprob: null },
+      { text: "not", start: 3, end: 4, type: "word", logprob: null },
+      { text: "yet", start: 4, end: 5, type: "word", logprob: null },
+    ] },
     config: createConfig(),
     fetchImpl,
   });

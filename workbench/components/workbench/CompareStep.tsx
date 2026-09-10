@@ -7,6 +7,7 @@ import { formatTime, getLabels } from "./labels";
 import { useLocale } from "./LocaleContext";
 
 interface CompareStepProps {
+  research?: boolean;
   audioResetKey: number;
   onFinish: () => void;
   judgeBusy: boolean;
@@ -53,6 +54,7 @@ function JudgeResultPanel({ result, showDeclaredRecall }: { result: JudgeResult;
 }
 
 export function CompareStep({
+  research = false,
   audioResetKey,
   onFinish,
   judgeBusy,
@@ -89,7 +91,7 @@ export function CompareStep({
           <h2>{selectedFriction ? `${labels.category[selectedFriction.category]} · ${formatTime(selectedFriction.start_sec)}–${formatTime(selectedFriction.end_sec)}` : c.noTarget}</h2>
           <p>{selectedFriction?.listener_effect ?? c.targetHelp}</p>
           <AudioPlayback audio={originalAudio} label={c.original} start={selectedFriction?.start_sec} end={selectedFriction?.end_sec} />
-          <div className="suggestion-block"><span>{c.suggestedRetry}</span><strong>{selectedFriction?.suggested_version ?? "—"}</strong></div>
+          <p>{selectedFriction?.practice_cue}</p><div className="suggestion-block"><span>{c.suggestedRetry}</span><strong>{selectedFriction?.suggested_version ?? "—"}</strong></div>
         </article>
 
         <article className="panel retry-panel">
@@ -103,18 +105,19 @@ export function CompareStep({
             idleHint={c.retryHint}
             label={c.upload}
             maxBytes={maxAudioBytes}
-            maxSeconds={180}
+            maxSeconds={40}
             disabled={judgeBusy || !canRecordRetry}
             onAudioChange={onRetryAudioChange}
             onError={onError}
           />
-          <button className={`primary-button full-button${judgeBusy ? " is-loading" : ""}`} type="button" disabled={!canJudge} onClick={onJudge}>
+          {research ? <button className={`primary-button full-button${judgeBusy ? " is-loading" : ""}`} type="button" disabled={!canJudge} onClick={onJudge}>
             {judgeBusy ? c.comparing : c.compare}
-          </button>
+          </button> : null}
         </article>
       </section>
 
-      {judgeResult ? <><JudgeResultPanel result={judgeResult} showDeclaredRecall={false} /><AudioPlayback audio={retryAudio} label={c.thisTry} /><div className="completion"><h2>{c.completeTitle}</h2><p>{c.completeBody}</p><button className="primary-button" onClick={onFinish}>{c.complete}</button></div></> : null}
+      {!research && retryAudio ? <section className="panel"><h2>{locale === "zh" ? "回听后，由你判断" : "Listen and decide"}</h2><p>{locale === "zh" ? "意思是否保留？听起来是否更顺畅？也可以保留原来的表达。" : "Is the meaning preserved? Does it sound easier to follow? You can keep your original wording."}</p><AudioPlayback audio={retryAudio} label={c.thisTry} /><button className="primary-button" onClick={onFinish}>{c.complete}</button></section> : null}
+      {research && judgeResult ? <><JudgeResultPanel result={judgeResult} showDeclaredRecall={false} /><AudioPlayback audio={retryAudio} label={c.thisTry} /><div className="completion"><h2>{c.completeTitle}</h2><p>{c.completeBody}</p><button className="primary-button" onClick={onFinish}>{c.complete}</button></div></> : null}
     </section>
   );
 }

@@ -38,6 +38,7 @@ export interface TranscriptWord {
   end: number;
   type: string;
   logprob: number | null;
+  speaker_id?: string | null;
 }
 
 export interface Transcript {
@@ -55,6 +56,10 @@ export interface CoachQuality {
 
 export interface Friction {
   id: string;
+  start_word_index?: number;
+  end_word_index?: number;
+  focus?: "pronunciation" | "pause" | "wording" | "organization";
+  impact?: "comprehension" | "ease";
   start_sec: number;
   end_sec: number;
   category: FrictionCategory;

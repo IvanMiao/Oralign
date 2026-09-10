@@ -307,7 +307,7 @@ export function Workbench() {
             intent={intent}
             maxAudioBytes={maxAudioBytes}
             onAnalyze={analyze}
-            onAudioChange={setOriginalAudio}
+            onAudioChange={(audio) => { setOriginalAudio(audio); setSession(null); setJudgeResult(null); setRetryAudio(null); setSelectedFrictionId(null); }}
             onError={showError}
             onIntentChange={setIntent}
           />
@@ -327,6 +327,7 @@ export function Workbench() {
         </div>
         <div hidden={activeStep !== "compare"}>
           <CompareStep
+            research={research}
             audioResetKey={audioResetKey + retryResetKey}
             onFinish={resetSession}
             judgeBusy={judgeBusy}
