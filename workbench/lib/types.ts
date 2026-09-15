@@ -1,17 +1,10 @@
 export type IntentSlot = "progress" | "blocker" | "request" | "overall";
-export type IntentMode = "quick" | "research";
 export type FrictionCategory = "intelligibility" | "processing" | "fluency" | "pragmatics";
 export type EvidenceSource = "audio" | "text" | "timing" | "context" | "asr_disagreement";
 export type EvidenceLevel = "high" | "medium";
-export type RecallLevel = "clear" | "partial" | "missing";
-export type JudgeOutcome = "retry_clearer" | "original_clearer" | "no_clear_difference" | "cannot_judge";
 
 export interface Intent {
-  mode: IntentMode;
   takeaway: string;
-  progress: string;
-  blocker: string;
-  request: string;
 }
 
 export interface AudioPayload {
@@ -85,7 +78,6 @@ export interface ProviderVersions {
   stt_model: string;
   tts_model: string;
   coach_prompt: string;
-  judge_prompt: string;
 }
 
 export interface WorkbenchSession {
@@ -96,43 +88,6 @@ export interface WorkbenchSession {
   transcript: Transcript;
   coach: CoachResult;
   versions: ProviderVersions;
-}
-
-export interface RecallResult {
-  progress: RecallLevel;
-  blocker: RecallLevel;
-  request: RecallLevel;
-}
-
-export interface JudgeSide {
-  recall: RecallResult;
-  effort: number;
-}
-
-export interface JudgeResult {
-  outcome: JudgeOutcome;
-  reason: string;
-  original: JudgeSide;
-  retry: JudgeSide;
-  retry_transcript?: Transcript;
-  audit: {
-    original_label: "A" | "B";
-    raw_decision: "a_clearer" | "b_clearer" | "no_clear_difference" | "cannot_judge";
-    prompt_version: string;
-  };
-  versions?: ProviderVersions;
-}
-
-export interface FrictionAnnotation {
-  verdict: "" | "agree" | "partial" | "disagree";
-  note: string;
-}
-
-export interface HumanEvaluation {
-  recall: Record<"progress" | "blocker" | "request", RecallLevel | "pending">;
-  effort: number;
-  top_friction: string;
-  notes: string;
 }
 
 export interface RuntimeConfig {
@@ -157,7 +112,6 @@ export interface PublicConfig {
   };
   models: {
     coach: string;
-    judge: string;
     transcription: string;
     referenceVoice: string;
   };

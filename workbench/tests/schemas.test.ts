@@ -5,37 +5,15 @@ import {
   ValidationError,
   decodeAudioInput,
   normalizeCoachOutput,
-  normalizeJudgeOutput,
   validateIntent,
 } from "../lib/schemas";
 
-test("validateIntent accepts quick mode without declared slots", () => {
-  assert.deepEqual(validateIntent({ mode: "quick", takeaway: "  decide today  " }), {
-    mode: "quick",
+test("validateIntent keeps an optional takeaway and ignores research slots", () => {
+  assert.deepEqual(validateIntent({ takeaway: "  decide today  ", mode: "research", progress: "done" }), {
     takeaway: "decide today",
-    progress: "",
-    blocker: "",
-    request: "",
   });
-});
-
-test("validateIntent trims all research-mode slots", () => {
-  assert.deepEqual(validateIntent({
-    mode: "research",
-    progress: "  page done ",
-    blocker: " review pending ",
-    request: " confirm today ",
-  }), {
-    mode: "research",
-    takeaway: "",
-    progress: "page done",
-    blocker: "review pending",
-    request: "confirm today",
-  });
-});
-
-test("validateIntent rejects a missing research-mode slot", () => {
-  assert.throws(() => validateIntent({ mode: "research", progress: "done", blocker: "pending", request: "" }), ValidationError);
+  assert.deepEqual(validateIntent(null), { takeaway: "" });
+  assert.deepEqual(validateIntent({}), { takeaway: "" });
 });
 
 test("decodeAudioInput validates MIME, base64 and size", () => {
@@ -71,20 +49,6 @@ test("normalizeCoachOutput enforces evidence-bearing friction cards", () => {
 
   assert.equal(result.frictions[0]?.id, "friction-1");
   assert.deepEqual(result.frictions[0]?.evidence_sources, ["audio", "text"]);
-});
-
-test("normalizeJudgeOutput keeps recall and effort bounded", () => {
-  const result = normalizeJudgeOutput({
-    decision: "b_clearer",
-    reason: "B states the request earlier.",
-    recall_a: { progress: "clear", blocker: "partial", request: "missing" },
-    recall_b: { progress: "clear", blocker: "clear", request: "clear" },
-    effort_a: 4,
-    effort_b: 2,
-  });
-
-  assert.equal(result.decision, "b_clearer");
-  assert.equal(result.effort_b, 2);
 });
 
 const practiceCard = {
