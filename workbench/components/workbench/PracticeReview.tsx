@@ -11,7 +11,13 @@ export function PracticeReview({ session, originalAudio, config, onSelect, onErr
   const { c } = useLocale();
   if (!session) return null;
   const top = session.coach.frictions[0];
-  const card = (index: number) => <div key={session.coach.frictions[index].id}><AudioPlayback audio={originalAudio} label={c.originalExcerpt} start={session.coach.frictions[index].start_sec} end={session.coach.frictions[index].end_sec} /><FrictionCard key={session.coach.frictions[index].id} friction={session.coach.frictions[index]} index={index} annotation={{verdict:"",note:""}} research={false} ttsReady={Boolean(config?.providers.elevenLabsTts)} onAnnotationChange={() => {}} onError={onError} onSuccess={onSuccess} onSelect={() => onSelect(session.coach.frictions[index].id)} /></div>;
+  const card = (index: number) => {
+    const friction = session.coach.frictions[index];
+    return <div key={friction.id}>
+      <AudioPlayback audio={originalAudio} label={c.originalExcerpt} start={friction.start_sec} end={friction.end_sec} />
+      <FrictionCard friction={friction} index={index} ttsReady={Boolean(config?.providers.elevenLabsTts)} onError={onError} onSuccess={onSuccess} onSelect={() => onSelect(friction.id)} />
+    </div>;
+  };
   return <section className="screen practice-review">
     <div className="practice-heading"><p className="eyebrow">{c.reviewEyebrow}</p><h2>{!session.coach.quality.usable ? c.reviewUnusable : top ? c.reviewTitle : c.reviewClear}</h2><p>{session.coach.summary}</p></div>
     {!session.coach.quality.usable ? <article className="panel capture-panel"><p>{session.coach.quality.note}</p><button className="primary-button" onClick={onFinish}>{c.recordAgain}</button></article> : <>

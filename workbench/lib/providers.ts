@@ -1,12 +1,10 @@
 import { alignmentToWords } from "@/lib/speech-timing";
-import { COACH_SYSTEM_PROMPT, COACH_PROMPT_VERSION, JUDGE_PROMPT_VERSION, buildCoachPrompt, buildJudgePrompt } from "@/lib/prompts";
-import { normalizeCoachOutput, normalizeJudgeOutput } from "@/lib/schemas";
+import { COACH_SYSTEM_PROMPT, COACH_PROMPT_VERSION, buildCoachPrompt } from "@/lib/prompts";
+import { normalizeCoachOutput } from "@/lib/schemas";
 import type {
   CoachResult,
   DecodedAudio,
   Intent,
-  JudgeOutcome,
-  JudgeResult,
   ProviderVersions,
   RuntimeConfig,
   Transcript,
@@ -280,99 +278,6 @@ export async function analyzeFriction(input: AnalyzeInput): Promise<CoachResult>
   return normalizeCoachOutput(raw, { requirePracticeFields: true, transcript: input.transcript });
 }
 
-const recallSchema = {
-  type: "object",
-  additionalProperties: false,
-  required: ["progress", "blocker", "request"],
-  properties: {
-    progress: { type: "string", enum: ["clear", "partial", "missing"] },
-    blocker: { type: "string", enum: ["clear", "partial", "missing"] },
-    request: { type: "string", enum: ["clear", "partial", "missing"] },
-  },
-};
-
-const judgeSchema: Record<string, unknown> = {
-  type: "object",
-  additionalProperties: false,
-  required: ["decision", "reason", "recall_a", "recall_b", "effort_a", "effort_b"],
-  properties: {
-    decision: { type: "string", enum: ["a_clearer", "b_clearer", "no_clear_difference", "cannot_judge"] },
-    reason: { type: "string" },
-    recall_a: recallSchema,
-    recall_b: recallSchema,
-    effort_a: { type: "integer", minimum: 1, maximum: 5 },
-    effort_b: { type: "integer", minimum: 1, maximum: 5 },
-  },
-};
-
-function publicDecision(
-  decision: JudgeResult["audit"]["raw_decision"],
-  originalLabel: "A" | "B",
-): JudgeOutcome {
-  if (decision === "cannot_judge" || decision === "no_clear_difference") return decision;
-  const clearerLabel = decision === "a_clearer" ? "A" : "B";
-  return clearerLabel === originalLabel ? "original_clearer" : "retry_clearer";
-}
-
-interface JudgeInput extends ProviderInput {
-  originalAudio: DecodedAudio;
-  retryAudio: DecodedAudio;
-  intent: Intent;
-  originalTranscript: string;
-  retryTranscript: string;
-  random?: () => number;
-}
-
-export async function judgeAudioPair({
-  originalAudio,
-  retryAudio,
-  intent,
-  originalTranscript,
-  retryTranscript,
-  config,
-  fetchImpl = fetch,
-  random = Math.random,
-}: JudgeInput): Promise<JudgeResult> {
-  const originalIsA = random() < 0.5;
-  const audioA = originalIsA ? originalAudio : retryAudio;
-  const audioB = originalIsA ? retryAudio : originalAudio;
-  const transcriptA = originalIsA ? originalTranscript : retryTranscript;
-  const transcriptB = originalIsA ? retryTranscript : originalTranscript;
-
-  const raw = await callGeminiJson({
-    config,
-    fetchImpl,
-    contents: [
-      { text: buildJudgePrompt({ intent, transcriptA, transcriptB }) },
-      { text: "Audio A follows." },
-      { inlineData: { mimeType: audioA.mimeType, data: audioA.base64 } },
-      { text: "Audio B follows." },
-      { inlineData: { mimeType: audioB.mimeType, data: audioB.base64 } },
-    ],
-    schema: judgeSchema,
-  });
-  const normalized = normalizeJudgeOutput(raw);
-  const originalLabel = originalIsA ? "A" : "B";
-
-  return {
-    outcome: publicDecision(normalized.decision, originalLabel),
-    reason: normalized.reason,
-    original: {
-      recall: originalIsA ? normalized.recall_a : normalized.recall_b,
-      effort: originalIsA ? normalized.effort_a : normalized.effort_b,
-    },
-    retry: {
-      recall: originalIsA ? normalized.recall_b : normalized.recall_a,
-      effort: originalIsA ? normalized.effort_b : normalized.effort_a,
-    },
-    audit: {
-      original_label: originalLabel,
-      raw_decision: normalized.decision,
-      prompt_version: JUDGE_PROMPT_VERSION,
-    },
-  };
-}
-
 interface SynthesizeInput extends ProviderInput {
   text: string;
 }
@@ -448,6 +353,5 @@ export function providerVersions(config: RuntimeConfig): ProviderVersions {
     stt_model: config.elevenLabsSttModel,
     tts_model: config.elevenLabsTtsModel,
     coach_prompt: COACH_PROMPT_VERSION,
-    judge_prompt: JUDGE_PROMPT_VERSION,
   };
 }

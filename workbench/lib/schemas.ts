@@ -5,16 +5,13 @@ import type {
   EvidenceSource,
   FrictionCategory,
   Intent,
-  IntentMode,
   IntentSlot,
-  RecallLevel,
   Transcript,
   Friction,
 } from "@/lib/types";
 
 const categories = new Set<FrictionCategory>(["intelligibility", "processing", "fluency", "pragmatics"]);
 const intentSlots = new Set<IntentSlot>(["progress", "blocker", "request", "overall"]);
-const intentModes = new Set<IntentMode>(["quick", "research"]);
 const evidenceSources = new Set<EvidenceSource>(["audio", "text", "timing", "context", "asr_disagreement"]);
 const evidenceLevels = new Set<EvidenceLevel>(["high", "medium"]);
 const qualityReasons = new Set<CoachResult["quality"]["reason"]>([
@@ -25,22 +22,6 @@ const qualityReasons = new Set<CoachResult["quality"]["reason"]>([
   "not_english",
   "insufficient_evidence",
 ]);
-const recallLevels = new Set<RecallLevel>(["clear", "partial", "missing"]);
-const judgeDecisions = new Set<NormalizedJudgeOutput["decision"]>([
-  "a_clearer",
-  "b_clearer",
-  "no_clear_difference",
-  "cannot_judge",
-]);
-
-export interface NormalizedJudgeOutput {
-  decision: "a_clearer" | "b_clearer" | "no_clear_difference" | "cannot_judge";
-  reason: string;
-  recall_a: Record<"progress" | "blocker" | "request", RecallLevel>;
-  recall_b: Record<"progress" | "blocker" | "request", RecallLevel>;
-  effort_a: number;
-  effort_b: number;
-}
 
 export class ValidationError extends Error {
   readonly code: string;
@@ -91,32 +72,9 @@ function enumValue<T extends string>(value: unknown, allowed: ReadonlySet<T>, fi
 }
 
 export function validateIntent(value: unknown): Intent {
+  if (value == null) return { takeaway: "" };
   const intent = asObject(value, "缺少核心意图");
-
-  // Payloads created before intent modes existed are treated as research data.
-  const hasLegacySlots = [intent.progress, intent.blocker, intent.request]
-    .some((slot) => typeof slot === "string" && slot.trim());
-  const mode = intent.mode === undefined
-    ? (hasLegacySlots ? "research" : "quick")
-    : enumValue(intent.mode, intentModes, "测试模式");
-
-  if (mode === "quick") {
-    return {
-      mode,
-      takeaway: optionalString(intent.takeaway, 600),
-      progress: "",
-      blocker: "",
-      request: "",
-    };
-  }
-
-  return {
-    mode,
-    takeaway: "",
-    progress: requiredString(intent.progress, "进展", 600),
-    blocker: requiredString(intent.blocker, "阻塞", 600),
-    request: requiredString(intent.request, "请求", 600),
-  };
+  return { takeaway: optionalString(intent.takeaway, 600) };
 }
 
 export function decodeAudioInput(value: unknown, maxBytes = 12 * 1024 * 1024): DecodedAudio {
@@ -208,28 +166,6 @@ export function normalizeCoachOutput(value: unknown, options: { requirePracticeF
     },
     summary: requiredString(result.summary, "summary", 1_000),
     frictions: quality.usable ? frictions.filter((item) => !item.optional_style_only) : [],
-  };
-}
-
-export function normalizeJudgeOutput(value: unknown): NormalizedJudgeOutput {
-  const result = asObject(value, "Judge 返回格式无效");
-
-  function normalizeRecall(raw: unknown, label: string): NormalizedJudgeOutput["recall_a"] {
-    const recall = asObject(raw, `${label} 意图复述无效`);
-    return {
-      progress: enumValue(recall.progress, recallLevels, `${label}.progress`),
-      blocker: enumValue(recall.blocker, recallLevels, `${label}.blocker`),
-      request: enumValue(recall.request, recallLevels, `${label}.request`),
-    };
-  }
-
-  return {
-    decision: enumValue(result.decision, judgeDecisions, "decision"),
-    reason: requiredString(result.reason, "reason", 1_000),
-    recall_a: normalizeRecall(result.recall_a, "recall_a"),
-    recall_b: normalizeRecall(result.recall_b, "recall_b"),
-    effort_a: boundedNumber(result.effort_a, "effort_a", 1, 5),
-    effort_b: boundedNumber(result.effort_b, "effort_b", 1, 5),
   };
 }
 

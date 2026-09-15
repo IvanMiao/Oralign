@@ -37,7 +37,6 @@ export function getPublicConfig(config: RuntimeConfig): PublicConfig {
     },
     models: {
       coach: config.geminiModel,
-      judge: config.geminiModel,
       transcription: config.elevenLabsSttModel,
       referenceVoice: config.elevenLabsTtsModel,
     },
