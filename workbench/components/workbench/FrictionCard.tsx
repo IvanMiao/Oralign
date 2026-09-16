@@ -1,11 +1,8 @@
 "use client";
 
-import { useState } from "react";
-
-import { requestReferenceSpeech, type ReferenceSpeech } from "@/lib/client-api";
 import type { Friction } from "@/lib/types";
 import { formatTime, getLabels } from "./labels";
-import { ReferenceAudio } from "./ReferenceAudio";
+import { ReferencePractice } from "./ReferencePractice";
 import { useLocale } from "./LocaleContext";
 
 interface FrictionCardProps {
@@ -14,7 +11,6 @@ interface FrictionCardProps {
   ttsReady: boolean;
   onError: (message: string) => void;
   onSelect: () => void;
-  onSuccess: (message: string) => void;
 }
 
 export function FrictionCard({
@@ -23,31 +19,9 @@ export function FrictionCard({
   ttsReady,
   onError,
   onSelect,
-  onSuccess,
 }: FrictionCardProps) {
   const { locale, c } = useLocale();
   const labels = getLabels(locale);
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [ttsAudio, setTtsAudio] = useState<ReferenceSpeech | null>(null);
-
-  async function generateReferenceAudio() {
-    if (ttsAudio || isGenerating) return;
-    if (!ttsReady) {
-      onError(c.ttsMissing);
-      return;
-    }
-    setIsGenerating(true);
-    try {
-      const audio = await requestReferenceSpeech(friction.suggested_version);
-      setTtsAudio(audio);
-      onSuccess(c.referenceReady);
-    } catch (error) {
-      onError(error instanceof Error ? error.message : c.referenceFailed);
-    } finally {
-      setIsGenerating(false);
-    }
-  }
-
   return (
     <article className={`panel friction-card${index === 0 ? " top-friction" : ""}`}>
       <div className="friction-header">
@@ -80,12 +54,9 @@ export function FrictionCard({
       </div>
       <div className="card-actions">
         <button className="secondary-button" type="button" onClick={onSelect}>{c.practiceThis}</button>
-        <button className={`quiet-button${isGenerating ? " is-loading" : ""}`} type="button" disabled={isGenerating || Boolean(ttsAudio)} onClick={generateReferenceAudio}>
-          {isGenerating ? c.generating : ttsAudio ? c.referenceReadyShort : c.reference}
-        </button>
       </div>
 
-      {ttsAudio ? <ReferenceAudio speech={ttsAudio} onError={onError} /> : null}
+      <ReferencePractice friction={friction} ready={ttsReady} onError={onError} />
     </article>
   );
 }

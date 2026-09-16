@@ -130,3 +130,34 @@ export interface TimedWord {
   start: number;
   end: number;
 }
+
+export interface ReferenceTarget {
+  id: string;
+  focus: "pronunciation" | "pause" | "wording" | "organization";
+  original_excerpt: string;
+  suggested_version: string;
+  observation: string;
+  listener_effect: string;
+  practice_cue: string;
+}
+
+export interface ReferenceSpeech {
+  words: TimedWord[];
+  mimeType: string;
+  base64: string;
+}
+
+export type ReferenceResult = {
+  targetId: string;
+  versions: { planner: string; check: string; gemini: string; tts: string };
+} & ({
+  status: "ready";
+  kind: "pause" | "connected" | "stress" | "wording";
+  text: string;
+  expectedChange: string;
+  verification: "model_checked";
+  speech: ReferenceSpeech;
+} | {
+  status: "unavailable";
+  reason: "unsupported_action" | "check_failed" | "check_unavailable";
+});

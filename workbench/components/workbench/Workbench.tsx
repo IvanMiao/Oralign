@@ -9,6 +9,7 @@ import type {
   PublicConfig,
   WorkbenchSession,
 } from "@/lib/types";
+import { ReferenceProvider } from "./ReferencePractice";
 import { PracticeReview } from "./PracticeReview";
 import { CaptureStep } from "./CaptureStep";
 import { CompareStep } from "./CompareStep";
@@ -44,7 +45,6 @@ export function Workbench() {
   const selectedFriction = session?.coach.frictions.find((friction) => friction.id === selectedFrictionId) ?? null;
 
   const showError = useCallback((message: string) => setNotice({ kind: "error", message }), []);
-  const showSuccess = useCallback((message: string) => setNotice({ kind: "success", message }), []);
 
   useEffect(() => {
     let cancelled = false;
@@ -191,30 +191,32 @@ export function Workbench() {
             onIntentChange={setIntent}
           />
         </div>
-        <div hidden={activeStep !== "review"}>
-          <PracticeReview
-            session={session}
-            originalAudio={originalAudio}
-            config={config}
-            onSelect={selectFriction}
-            onError={showError}
-            onSuccess={showSuccess}
-            onFinish={resetSession}
-          />
-        </div>
-        <div hidden={activeStep !== "compare"}>
-          <CompareStep
-            audioResetKey={audioResetKey + retryResetKey}
-            onFinish={resetSession}
-            maxAudioBytes={maxAudioBytes}
-            originalAudio={originalAudio}
-            retryAudio={retryAudio}
-            selectedFriction={selectedFriction}
-            session={session}
-            onError={showError}
-            onRetryAudioChange={setRetryAudio}
-          />
-        </div>
+        <ReferenceProvider key={session?.session_id ?? "empty"}>
+          <div hidden={activeStep !== "review"}>
+            <PracticeReview
+              session={session}
+              originalAudio={originalAudio}
+              config={config}
+              onSelect={selectFriction}
+              onError={showError}
+              onFinish={resetSession}
+            />
+          </div>
+          <div hidden={activeStep !== "compare"}>
+            <CompareStep
+              referenceReady={Boolean(config?.providers.gemini && config.providers.elevenLabsTts)}
+              audioResetKey={audioResetKey + retryResetKey}
+              onFinish={resetSession}
+              maxAudioBytes={maxAudioBytes}
+              originalAudio={originalAudio}
+              retryAudio={retryAudio}
+              selectedFriction={selectedFriction}
+              session={session}
+              onError={showError}
+              onRetryAudioChange={setRetryAudio}
+            />
+          </div>
+        </ReferenceProvider>
 
         <footer className="workbench-footer">
           <p>{c.practiceFooter}</p>
