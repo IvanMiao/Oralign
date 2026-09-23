@@ -38,6 +38,7 @@ export class ProviderError extends Error {
 interface ProviderInput {
   config: RuntimeConfig;
   fetchImpl?: FetchLike;
+  signal?: AbortSignal;
 }
 
 interface GeminiTextPart {
@@ -97,7 +98,7 @@ interface GeminiRequest extends ProviderInput {
   systemPrompt?: string;
 }
 
-async function callGeminiJson({ config, contents, schema, systemPrompt, fetchImpl = fetch }: GeminiRequest): Promise<unknown> {
+export async function callGeminiJson({ config, contents, schema, systemPrompt, fetchImpl = fetch, signal }: GeminiRequest): Promise<unknown> {
   const endpoint = `${config.geminiApiBase}/models/${encodeURIComponent(config.geminiModel)}:generateContent`;
   let response: Response;
   try {
@@ -118,7 +119,7 @@ async function callGeminiJson({ config, contents, schema, systemPrompt, fetchImp
           responseJsonSchema: schema,
         },
       }),
-      signal: AbortSignal.timeout(config.requestTimeoutMs),
+      signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(config.requestTimeoutMs)]) : AbortSignal.timeout(config.requestTimeoutMs),
     });
   } catch (error) {
     const details = errorDetails(error);
@@ -282,7 +283,7 @@ interface SynthesizeInput extends ProviderInput {
   text: string;
 }
 
-export async function synthesizeSpeech({ text, config, fetchImpl = fetch }: SynthesizeInput): Promise<{
+export async function synthesizeSpeech({ text, config, fetchImpl = fetch, signal }: SynthesizeInput): Promise<{
   mimeType: string;
   base64: string;
   characterCost: string | null;
@@ -305,14 +306,14 @@ export async function synthesizeSpeech({ text, config, fetchImpl = fetch }: Synt
         model_id: config.elevenLabsTtsModel,
         language_code: "en",
         voice_settings: {
-          stability: 0.55,
+          stability: config.elevenLabsTtsModel === "eleven_v3" ? 0.5 : 0.55,
           similarity_boost: 0.65,
           style: 0,
           use_speaker_boost: true,
           speed: 0.95,
         },
       }),
-      signal: AbortSignal.timeout(config.requestTimeoutMs),
+      signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(config.requestTimeoutMs)]) : AbortSignal.timeout(config.requestTimeoutMs),
     });
   } catch (error) {
     const details = errorDetails(error);

@@ -2,12 +2,14 @@
 
 import type { CapturedAudio, Friction, WorkbenchSession } from "@/lib/types";
 import { AudioPlayback } from "./AudioPlayback";
+import { ReferencePractice } from "./ReferencePractice";
 import { AudioCapture } from "./AudioCapture";
 import { formatTime, getLabels } from "./labels";
 import { useLocale } from "./LocaleContext";
 
 interface CompareStepProps {
   audioResetKey: number;
+  referenceReady: boolean;
   onFinish: () => void;
   maxAudioBytes: number;
   originalAudio: CapturedAudio | null;
@@ -20,6 +22,7 @@ interface CompareStepProps {
 
 export function CompareStep({
   audioResetKey,
+  referenceReady,
   onFinish,
   maxAudioBytes,
   originalAudio,
@@ -52,6 +55,7 @@ export function CompareStep({
           <p>{selectedFriction?.listener_effect ?? c.targetHelp}</p>
           <AudioPlayback audio={originalAudio} label={c.original} start={selectedFriction?.start_sec} end={selectedFriction?.end_sec} />
           <p>{selectedFriction?.practice_cue}</p><div className="suggestion-block"><span>{c.suggestedRetry}</span><strong>{selectedFriction?.suggested_version ?? "—"}</strong></div>
+          {selectedFriction ? <ReferencePractice friction={selectedFriction} ready={referenceReady} onError={onError} /> : null}
         </article>
 
         <article className="panel retry-panel">

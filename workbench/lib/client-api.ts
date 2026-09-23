@@ -1,4 +1,4 @@
-import type { AudioPayload, CapturedAudio, TimedWord } from "@/lib/types";
+import type { AudioPayload, CapturedAudio, ReferenceResult, ReferenceTarget } from "@/lib/types";
 
 interface ApiErrorBody {
   error?: {
@@ -34,15 +34,10 @@ export async function audioToPayload(audio: CapturedAudio): Promise<AudioPayload
   };
 }
 
-export interface ReferenceSpeech {
-  words?: TimedWord[];
-  mimeType: string;
-  base64: string;
-}
-
-export function requestReferenceSpeech(text: string): Promise<ReferenceSpeech> {
-  return apiRequest<ReferenceSpeech>("/api/tts", {
+export function requestReferenceSpeech(target: ReferenceTarget, locale: "zh" | "en", signal?: AbortSignal): Promise<ReferenceResult> {
+  return apiRequest<ReferenceResult>("/api/tts", {
     method: "POST",
-    body: JSON.stringify({ text }),
+    body: JSON.stringify({ target, locale }),
+    signal,
   });
 }

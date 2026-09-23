@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { ReferenceSpeech } from "@/lib/client-api";
+import type { ReferenceSpeech } from "@/lib/types";
 import { useLocale } from "./LocaleContext";
 import styles from "./ReferenceAudio.module.css";
 

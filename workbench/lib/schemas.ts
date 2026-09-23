@@ -168,7 +168,3 @@ export function normalizeCoachOutput(value: unknown, options: { requirePracticeF
     frictions: quality.usable ? frictions.filter((item) => !item.optional_style_only) : [],
   };
 }
-
-export function validateTtsText(value: unknown): string {
-  return requiredString(value, "参考表达", 800);
-}

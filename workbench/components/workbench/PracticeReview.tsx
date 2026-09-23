@@ -4,9 +4,9 @@ import { FrictionCard } from "./FrictionCard";
 import { TranscriptExplorer } from "./TranscriptExplorer";
 import { AudioPlayback } from "./AudioPlayback";
 import { interpolate, useLocale } from "./LocaleContext";
-export function PracticeReview({ session, originalAudio, config, onSelect, onError, onSuccess, onFinish }: {
+export function PracticeReview({ session, originalAudio, config, onSelect, onError, onFinish }: {
   session: WorkbenchSession | null; originalAudio: CapturedAudio | null; config: PublicConfig | null;
-  onSelect: (id: string) => void; onError: (message: string) => void; onSuccess: (message: string) => void; onFinish: () => void;
+  onSelect: (id: string) => void; onError: (message: string) => void; onFinish: () => void;
 }) {
   const { c } = useLocale();
   if (!session) return null;
@@ -15,7 +15,7 @@ export function PracticeReview({ session, originalAudio, config, onSelect, onErr
     const friction = session.coach.frictions[index];
     return <div key={friction.id}>
       <AudioPlayback audio={originalAudio} label={c.originalExcerpt} start={friction.start_sec} end={friction.end_sec} />
-      <FrictionCard friction={friction} index={index} ttsReady={Boolean(config?.providers.elevenLabsTts)} onError={onError} onSuccess={onSuccess} onSelect={() => onSelect(friction.id)} />
+      <FrictionCard friction={friction} index={index} ttsReady={Boolean(config?.providers.gemini && config.providers.elevenLabsTts)} onError={onError} onSelect={() => onSelect(friction.id)} />
     </div>;
   };
   return <section className="screen practice-review">
