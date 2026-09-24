@@ -16,5 +16,3 @@
 见 [配置与运行](./workbench/README.md)、[API 配置](./workbench/docs/api-configuration.md)、[架构及能力边界](./workbench/docs/architecture.md)。调用预算见 [credits 使用方案](./workbench/docs/credit-plan.md)。
 
 首发人群仍以中文母语、英语 B1–C1 成人为假设。工作更新是可选练习提示，当前首页文案仍偏工作场景；系统不再要求填写进展、阻塞、请求。
-
-[discovery](./discovery.md) 与 [roadmap](./roadmap.md) 是早期探索记录，其研究阶段和发布门槛不代表当前已实现功能；产品范围以 PRD 为准。
