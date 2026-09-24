@@ -1,18 +1,3 @@
 # Oralign
 
-面向已经能用外语表达、却不知道怎样进一步改善表达的人，发现本人不易察觉、但交流对象可能感到的摩擦，并通过声音证据和短练习减少理解负担。
-
-## 当前状态
-
-- 产品定义：[PRD v0.3.1](./prd.md)。
-- 当前实现：[口语练习应用](./workbench/README.md)，只有录音、分析回听、可选重说一条流程。
-- 已删除研究模式、三项意图填写、真人标注、JSON 导出及原版/重说 Judge API。
-- 动作示范：按练习目标规划停顿、连续意群或内容表达示范；生成后做独立的 AI 音频检查，通过后才提供播放。重音控制仅在显式配置 Eleven v3 时尝试，音素级指导暂不支持。
-- 重说目前由用户回听判断，尚无针对重说的自动变化检测。AI 检查的是生成的示范，不证明用户已改善，也不代替真人听辨。
-- 当前为本地单用户原型；声音诊断和示范准确性仍需真实样本检查。
-
-## 开始使用
-
-见 [配置与运行](./workbench/README.md)、[API 配置](./workbench/docs/api-configuration.md)、[架构及能力边界](./workbench/docs/architecture.md)。调用预算见 [credits 使用方案](./workbench/docs/credit-plan.md)。
-
-首发人群仍以中文母语、英语 B1–C1 成人为假设。工作更新是可选练习提示，当前首页文案仍偏工作场景；系统不再要求填写进展、阻塞、请求。
+Oralign is an AI speaking coach for clearer communication in a second language.
