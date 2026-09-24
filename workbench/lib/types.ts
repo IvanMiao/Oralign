@@ -93,6 +93,7 @@ export interface WorkbenchSession {
 export interface RuntimeConfig {
   geminiApiKey: string;
   geminiModel: string;
+  geminiLiveModel: string;
   geminiApiBase: string;
   elevenLabsApiKey: string;
   elevenLabsVoiceId: string;

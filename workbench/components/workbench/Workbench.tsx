@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 
 import { apiRequest, audioToPayload } from "@/lib/client-api";
 import type {
@@ -146,6 +147,9 @@ export function Workbench() {
       <header className="topbar">
         <div><p className="eyebrow">Oralign</p><h1>{c.practice}</h1></div>
         <div className="topbar-actions">
+          {process.env.NODE_ENV === "development" ? (
+            <Link className="quiet-button" href="/live">Live 对话</Link>
+          ) : null}
           <div className="language-switch" aria-label="Language">
             <button className={locale === "zh" ? "active" : ""} type="button" aria-pressed={locale === "zh"} onClick={() => setLocale("zh")}>中</button>
             <button className={locale === "en" ? "active" : ""} type="button" aria-pressed={locale === "en"} onClick={() => setLocale("en")}>EN</button>

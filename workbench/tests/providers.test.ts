@@ -13,6 +13,7 @@ function createConfig(overrides: Partial<RuntimeConfig> = {}): RuntimeConfig {
   return {
     geminiApiKey: "gemini-test-key",
     geminiModel: "gemini-3.7-flash",
+    geminiLiveModel: "gemini-3.8-live",
     geminiApiBase: "https://gemini.test/v1beta",
     elevenLabsApiKey: "eleven-test-key",
     elevenLabsVoiceId: "voice-test",

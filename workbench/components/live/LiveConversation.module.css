@@ -1,0 +1,91 @@
+.topbar {
+  width: min(1120px, calc(100% - 48px));
+  margin: 0 auto;
+  min-height: 82px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border);
+}
+.brand { color: var(--primary); text-decoration: none; font-size: 21px; font-weight: 750; letter-spacing: .08em; }
+.backLink { color: var(--muted-foreground); text-decoration: none; font-size: 14px; font-weight: 650; }
+.backLink:hover { color: var(--primary); }
+.page { width: min(1120px, calc(100% - 48px)); margin: 0 auto; padding: 42px 0 72px; }
+.welcome {
+  max-width: 760px;
+  margin: 64px auto;
+  padding: 56px;
+  text-align: center;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  box-shadow: var(--shadow-md);
+}
+.welcome h1 { font-size: clamp(30px, 5vw, 48px); letter-spacing: -.04em; margin: 14px 0 18px; }
+.welcome > p:not(.finePrint):not(.eyebrow) { max-width: 590px; margin: 0 auto 28px; font-size: 17px; }
+.welcome .finePrint { margin-top: 28px; }
+.welcomeNotes { display: flex; justify-content: center; gap: 18px; flex-wrap: wrap; margin: 28px 0 0; color: var(--primary); font-size: 13px; font-weight: 650; }
+.hero { display: flex; justify-content: space-between; align-items: end; gap: 24px; margin-bottom: 28px; }
+.hero h1 { margin: 0 0 8px; font-size: clamp(27px, 4vw, 38px); font-weight: 650; letter-spacing: -.035em; }
+.hero p:last-child { margin: 0; }
+.heroMeta { display: flex; flex-direction: column; align-items: flex-end; gap: 9px; flex: none; }
+.timer { font-size: 25px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--foreground); }
+.localBadge { color: var(--primary); background: #e8f2eb; border-radius: 999px; padding: 5px 10px; font-size: 11px; font-weight: 750; }
+.layout { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(300px, .8fr); gap: 18px; align-items: start; }
+.conversation, .controls { border-radius: 20px; background: #fff; border: 1px solid var(--border); box-shadow: var(--shadow-sm); }
+.conversation { min-height: 550px; display: flex; flex-direction: column; overflow: hidden; }
+.conversationHeader { display: flex; justify-content: space-between; gap: 16px; align-items: center; padding: 24px 28px; border-bottom: 1px solid var(--border); }
+.conversationHeader h2 { margin: 0; font-size: 21px; }
+.status { display: inline-flex; align-items: center; gap: 8px; padding: 8px 10px; white-space: nowrap; color: var(--muted-foreground); background: var(--surface-muted); border-radius: 999px; font-size: 12px; font-weight: 700; }
+.statusDot { width: 8px; height: 8px; border-radius: 50%; background: #94a3b8; }
+.status[data-state="connected"] .statusDot { background: #14915e; box-shadow: 0 0 0 4px #e3f6e9; }
+.status[data-state="connecting"] .statusDot, .status[data-state="reconnecting"] .statusDot { background: #d18a18; }
+.status[data-state="failed"] .statusDot { background: #ce4b4b; }
+.feed { display: flex; flex-direction: column; gap: 18px; padding: 28px; flex: 1; max-height: 570px; overflow-y: auto; }
+.empty { margin: auto; max-width: 350px; text-align: center; }
+.emptyMark { display: grid; place-items: center; margin: 0 auto 15px; width: 62px; height: 62px; color: var(--primary); background: #edf3e9; border-radius: 50%; font-size: 36px; }
+.empty h3 { margin-bottom: 7px; font-size: 20px; }
+.empty p { margin-bottom: 0; font-size: 14px; }
+.turn { max-width: 88%; padding: 15px 18px; background: #f3f6f1; border-radius: 14px 14px 14px 3px; }
+.turn[data-speaker="user"] { align-self: flex-end; background: #e9f3ec; border-radius: 14px 14px 3px 14px; }
+.turn[data-speaker="system"] { align-self: center; max-width: 100%; background: transparent; text-align: center; }
+.turnMeta { display: flex; gap: 10px; align-items: baseline; margin-bottom: 7px; color: var(--muted-foreground); font-size: 11px; }
+.turnMeta strong { color: var(--primary); font-size: 12px; }
+.turnMeta span { color: #a05c2e; }
+.turn p { margin: 0; color: var(--foreground); white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.55; }
+.interim { color: var(--muted-foreground); padding: 10px 14px; border-left: 2px solid var(--primary); font-size: 13px; }
+.interim p { margin: 4px 0 0; }
+.controls { padding: 28px; }
+.controlHeading h2 { margin: 0 0 8px; font-size: 23px; }
+.controlHeading p:last-child { font-size: 13px; }
+.micVisual { display: grid; place-items: center; height: 155px; margin: 20px 0; background: #f5f7f2; border-radius: 18px; }
+.micVisual[data-active="true"] { background: radial-gradient(circle, #e0f2e2 0, #f5f7f2 64%); }
+.micCore { display: grid; place-items: center; width: 72px; height: 72px; color: var(--primary); background: #fff; border: 1px solid #d1e3d4; border-radius: 50%; font-size: 30px; box-shadow: 0 8px 24px rgb(33 101 83 / 12%); }
+.micVisual[data-active="true"] .micCore { color: #fff; background: var(--primary); }
+.levelRow { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 12px; color: var(--muted-foreground); font-size: 12px; }
+.levelTrack { height: 7px; background: #e7ece4; border-radius: 999px; overflow: hidden; }
+.levelTrack span { display: block; height: 100%; background: var(--primary); transition: width 100ms ease-out; }
+.actions { display: grid; gap: 9px; margin-top: 22px; }
+.actions button { margin: 0; width: 100%; }
+.notice, .error { margin-top: 18px; padding: 12px 14px; border-radius: 10px; font-size: 13px; line-height: 1.5; }
+.notice { background: #eef5ee; color: #22583e; }
+.error { background: #fff1ef; color: #a53e37; }
+.finePrint { margin: 22px 0 0; font-size: 11px; line-height: 1.55; }
+@media (max-width: 760px) {
+  .page, .topbar { width: calc(100% - 32px); }
+  .page { padding-top: 24px; }
+  .hero { align-items: flex-start; }
+  .layout { grid-template-columns: 1fr; }
+  .conversation { min-height: 350px; }
+  .feed { max-height: 420px; }
+  .controls { order: -1; }
+  .welcome { margin: 24px auto; padding: 32px 24px; }
+}
+@media (max-width: 480px) {
+  .hero { display: block; }
+  .heroMeta { align-items: flex-start; flex-direction: row; margin-top: 16px; }
+  .conversationHeader { display: block; padding: 18px; }
+  .conversationHeader .status { margin-top: 12px; }
+  .feed, .controls { padding: 20px; }
+  .turn { max-width: 95%; }
+}
