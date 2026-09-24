@@ -12,7 +12,7 @@ const target: ReferenceTarget = {
 };
 const pause = { kind: "pause", start_word: 3, end_word: 3, expected_change: "Pause after approval." };
 const config: RuntimeConfig = {
-  geminiApiKey: "test", geminiModel: "test-model", geminiApiBase: "https://gemini.test",
+  geminiApiKey: "test", geminiModel: "test-model", geminiLiveModel: "gemini-3.8-live", geminiApiBase: "https://gemini.test",
   elevenLabsApiKey: "test", elevenLabsVoiceId: "voice", elevenLabsSttModel: "scribe_v2",
   elevenLabsTtsModel: "eleven_flash_v2_5", elevenLabsApiBase: "https://eleven.test",
   elevenLabsZeroRetention: false, requestTimeoutMs: 1000, maxAudioBytes: 1024,

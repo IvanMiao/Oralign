@@ -11,7 +11,7 @@ const securityHeaders = [
     key: "Content-Security-Policy",
     value: [
       "default-src 'self'",
-      "connect-src 'self'",
+      isDevelopment ? "connect-src 'self' wss://generativelanguage.googleapis.com" : "connect-src 'self'",
       "media-src 'self' blob: data:",
       "style-src 'self' 'unsafe-inline'",
       "font-src 'self'",

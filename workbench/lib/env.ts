@@ -16,6 +16,7 @@ export function getRuntimeConfig(env: NodeJS.ProcessEnv = process.env): RuntimeC
   return {
     geminiApiKey: env.GOOGLE_API_KEY ?? env.GEMINI_API_KEY ?? "",
     geminiModel: env.GEMINI_MODEL ?? "gemini-3.7-flash",
+    geminiLiveModel: env.GEMINI_LIVE_MODEL ?? "gemini-3.8-live",
     geminiApiBase: env.GEMINI_API_BASE ?? "https://generativelanguage.googleapis.com/v1beta",
     elevenLabsApiKey: env.ELEVENLABS_API_KEY ?? "",
     elevenLabsVoiceId: env.ELEVENLABS_VOICE_ID ?? "",
